@@ -8,9 +8,10 @@ class member
 {
 private:
 /* Member variables*/
-  boost::asio::ip::udp::socket socket_;
-  boost::asio::ip::udp::endpoint sender_endpoint_;
+  boost::asio::ip::udp::socket send_socket_;
+  boost::asio::ip::udp::socket multicast_socket_;
   boost::asio::ip::udp::endpoint multicast_endpoint_;
+  boost::asio::ip::udp::endpoint remote_endpoint_;
   bool ping_;
   std::string message_;
   enum { max_length = 1024 };
