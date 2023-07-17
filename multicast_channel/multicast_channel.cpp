@@ -41,7 +41,7 @@ void multicast_channel::send(std::string message) {
 
 void multicast_channel::handle_send_to(const boost::system::error_code& error) {
   if (!error) {
-    receive();
+    // ...
   }
 }
 
