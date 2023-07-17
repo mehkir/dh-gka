@@ -1,11 +1,11 @@
 #include "multicast_application.hpp"
 
-class MyApp : public multicast_application {
+class multicast_app_example : public multicast_application {
 public:
-    MyApp() : multicast_application() {
+    multicast_app_example() : multicast_application() {
     }
 
-    ~MyApp() {
+    ~multicast_app_example() {
     }
 
     void received_data(void* data, std::size_t bytes_recvd) override {
@@ -22,9 +22,8 @@ public:
     }
 };
 
-int main(int argc, char* argv[])
-{
-  MyApp myapp;
-  myapp.start();
+int main(int argc, char* argv[]) {
+  multicast_app_example _multicast_app_example;
+  _multicast_app_example.start();
   return 0;
 }
