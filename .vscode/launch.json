@@ -60,7 +60,7 @@
             "type": "cppdbg",
             "request": "launch",
             // Resolved by CMake Tools:
-            "program": "${workspaceFolder}/build/myapp",
+            "program": "${workspaceFolder}/build/multicast-app-example",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
