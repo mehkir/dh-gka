@@ -2,7 +2,7 @@
 
 class MyApp : public multicast_application {
 public:
-    MyApp() : multicast_application(*this) {
+    MyApp() : multicast_application() {
     }
 
     ~MyApp() {

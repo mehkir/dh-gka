@@ -1,11 +1,11 @@
 #include "multicast_application.hpp"
 
-multicast_application::multicast_application(multicast_application& mc_app) {
+multicast_application::multicast_application() {
     multicast_channel_.reset(new multicast_channel(io_service_,
                                             boost::asio::ip::address::from_string("0.0.0.0"),
                                             boost::asio::ip::address::from_string("239.255.0.1"),
                                             65000,
-                                            mc_app));
+                                            *this));
 
 }
 

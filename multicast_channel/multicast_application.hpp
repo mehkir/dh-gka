@@ -7,7 +7,7 @@
 
 class multicast_application {
     public:
-      multicast_application(multicast_application& mc_app);
+      multicast_application();
       ~multicast_application();
       virtual void received_data(void* data, std::size_t bytes_recvd) = 0;
     protected:
