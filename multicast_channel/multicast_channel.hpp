@@ -6,8 +6,7 @@
 #include <sstream>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-
-class multicast_application;
+#include "multicast_application.hpp"
 
 class multicast_channel
 {

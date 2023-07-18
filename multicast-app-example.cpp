@@ -1,8 +1,8 @@
-#include "multicast_application.hpp"
+#include "multicast_application_impl.hpp"
 
-class multicast_app_example : public multicast_application {
+class multicast_app_example : public multicast_application_impl {
 public:
-    multicast_app_example() : multicast_application() {
+    multicast_app_example() {
     }
 
     ~multicast_app_example() {
@@ -14,11 +14,11 @@ public:
     }
 
     void send(std::string message) {
-      multicast_application::send(message);
+      multicast_application_impl::send(message);
     }
 
     void start() {
-      multicast_application::start();
+      multicast_application_impl::start();
     }
 };
 
