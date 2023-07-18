@@ -2,10 +2,17 @@
 #define STR_DH_MEMBER
 
 #include "multicast_application_impl.hpp"
+#include <cryptopp/dh.h>
+#include <cryptopp/osrng.h>
 
 class member : public multicast_application_impl {
 private:
-
+    CryptoPP::DH diffie_hellman_;
+    CryptoPP::AutoSeededRandomPool rnd_;
+    CryptoPP::SecByteBlock secret_;
+    CryptoPP::SecByteBlock blinded_secret_;
+    CryptoPP::Integer secret_int_;
+    CryptoPP::Integer blinded_secret_int_;
 public:
     member();
     ~member();
