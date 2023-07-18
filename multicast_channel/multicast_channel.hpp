@@ -11,7 +11,6 @@ class multicast_application;
 
 class multicast_channel
 {
-  friend multicast_application;
 
 private:
 /* Member variables*/
@@ -25,7 +24,6 @@ private:
   multicast_application& mc_app_;
 private:
 /* Methods */
-  void send(std::string message);
   void handle_send_to(const boost::system::error_code& error);
   void receive();
   void handle_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
@@ -36,5 +34,6 @@ public:
     const boost::asio::ip::address& multicast_address,
     int multicast_port, multicast_application& mc_app);
   ~multicast_channel();
+  void send(std::string message);
 };
 #endif
