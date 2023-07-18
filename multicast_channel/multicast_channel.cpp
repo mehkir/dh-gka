@@ -1,5 +1,4 @@
 #include "multicast_channel.hpp"
-#include "multicast_application.hpp"
 
 using namespace boost::placeholders;
 
