@@ -18,7 +18,7 @@ public:
     ~member();
     void received_data(void* data, std::size_t bytes_recvd);
     void send(std::string message);
-    void member::start();
+    void start();
 
 };
 

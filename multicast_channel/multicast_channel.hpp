@@ -13,19 +13,22 @@ class multicast_channel
 
 private:
 /* Member variables*/
-  boost::asio::ip::udp::socket send_socket_;
+  boost::asio::ip::udp::socket unicast_socket_;
   boost::asio::ip::udp::socket multicast_socket_;
   boost::asio::ip::udp::endpoint multicast_endpoint_;
   boost::asio::ip::udp::endpoint remote_endpoint_;
   std::string message_;
   enum { max_length = 1024 };
-  char data_[max_length];
+  char multicast_data_[max_length];
+  char unicast_data_[max_length];
   multicast_application& mc_app_;
 private:
 /* Methods */
   void handle_send_to(const boost::system::error_code& error);
-  void receive();
-  void handle_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
+  void receive_multicast();
+  void receive_unicast();
+  void handle_multicast_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
+  void handle_unicast_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
 
 public:
   multicast_channel(boost::asio::io_service& io_service,

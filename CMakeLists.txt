@@ -14,5 +14,5 @@ target_link_libraries(multicast-app-example PUBLIC mclib)
 target_include_directories(multicast-app-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel)
 # ------------------------------------------------ #
 add_executable(member-example member-example.cpp)
-target_link_libraries(member-example PUBLIC mclib str_dh_lib)
+target_link_libraries(member-example PUBLIC str_dh_lib)
 target_include_directories(member-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel ${PROJECT_SOURCE_DIR}/str_dh)
