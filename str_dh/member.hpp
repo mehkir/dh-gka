@@ -22,6 +22,7 @@ private:
     service_id_t required_service_ = -1;
     service_id_t offered_service_ = -1;
     member_id_t member_id = -1;
+    member_count_t member_count_ = 1;
 public:
     member(bool _is_sponsor, service_id_t _service_id);
     ~member();

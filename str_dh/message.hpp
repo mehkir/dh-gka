@@ -3,6 +3,8 @@
 
 #include "primitives.hpp"
 #include <cryptopp/integer.h>
+#include <tuple>
+#include <boost/asio.hpp>
 
 enum message_type {
     FIND,
@@ -39,7 +41,6 @@ struct request_message : message {
         }
         service_id_t required_service_;
         CryptoPP::Integer blinded_secret_int_;
-        member_id_t requester_id_;
 };
 
 struct response_message : message {
@@ -50,6 +51,8 @@ struct response_message : message {
         service_id_t offered_service_;
         CryptoPP::Integer blinded_member_secret_int_;
         CryptoPP::Integer blinded_group_secret_int_;
+        member_count_t member_count_;
+        std::tuple<boost::asio::ip::address, unsigned short, int> new_sponsor_;
 };
 
 #endif

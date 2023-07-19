@@ -3,5 +3,6 @@
 
 typedef int service_id_t;
 typedef int member_id_t;
+typedef int member_count_t;
 
 #endif
