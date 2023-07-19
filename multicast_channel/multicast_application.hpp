@@ -9,7 +9,7 @@ private:
 
 public:
     virtual ~multicast_application() {}
-    virtual void received_data(void* data, std::size_t bytes_recvd) = 0;
+    virtual void received_data(void* _data, std::size_t _bytes_recvd) = 0;
 };
 
 #endif
