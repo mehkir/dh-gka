@@ -1,0 +1,7 @@
+#ifndef STR_DH_IP_ADDRESSES
+#define STR_DH_IP_ADDRESSES
+
+#define INTERFACE_ADDRESS "0.0.0.0"
+#define MULTICAST_ADDRESS "239.255.0.1"
+
+#endif
