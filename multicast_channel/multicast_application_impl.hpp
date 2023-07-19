@@ -9,7 +9,7 @@ class multicast_application_impl : public multicast_application {
       multicast_application_impl();
       ~multicast_application_impl();
     protected:
-      void send(std::string message);
+      void send(std::string _message);
       void start();
     private:
       std::unique_ptr<multicast_channel> multicast_channel_;
