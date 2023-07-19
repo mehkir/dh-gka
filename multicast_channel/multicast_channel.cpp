@@ -23,7 +23,6 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
     unicast_socket_.open(boost::asio::ip::udp::v4());
     unicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
     unicast_socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
-    std::cout << unicast_socket_.local_endpoint().port() << std::endl;
     receive_multicast();
     receive_unicast();
 }
