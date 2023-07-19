@@ -1,3 +1,6 @@
+#ifndef STR_DH_MODP2048_256SG
+#define STR_DH_MODP2048_256SG
+
 #include <cryptopp/integer.h>
 
 CryptoPP::Integer p(
@@ -27,3 +30,5 @@ CryptoPP::Integer g(
     "5E2327CFEF98C582664B4C0F6CC41659");
 
 CryptoPP::Integer q("0x8CF83642A709A097B447997640129DA299B1A47D1EB3750BA308B0FE64F5FBD3");
+
+#endif
