@@ -12,8 +12,8 @@ class multicast_application_impl : public multicast_application {
       void send(std::string _message);
       void start();
     private:
+      boost::asio::io_service io_service_; // MUST be listed BEFORE unique_ptr
       std::unique_ptr<multicast_channel> multicast_channel_;
-      boost::asio::io_service io_service_;
 };
 
 #endif
