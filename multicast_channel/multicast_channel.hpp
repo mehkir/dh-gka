@@ -24,17 +24,17 @@ private:
   multicast_application& mc_app_;
 private:
 /* Methods */
-  void handle_send_to(const boost::system::error_code& error);
+  void handle_send_to(const boost::system::error_code& _error);
   void receive_multicast();
   void receive_unicast();
-  void handle_multicast_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
-  void handle_unicast_receive_from(const boost::system::error_code& error, size_t bytes_recvd);
+  void handle_multicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd);
+  void handle_unicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd);
 
 public:
-  multicast_channel(boost::asio::io_service& io_service,
-    const boost::asio::ip::address& listen_interface_by_address,
-    const boost::asio::ip::address& multicast_address,
-    int multicast_port, multicast_application& mc_app);
+  multicast_channel(boost::asio::io_service& _io_service,
+    const boost::asio::ip::address& _listen_interface_by_address,
+    const boost::asio::ip::address& _multicast_address,
+    int _multicast_port, multicast_application& _mc_app);
   ~multicast_channel();
   void send(std::string message);
 };
