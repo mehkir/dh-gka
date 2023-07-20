@@ -19,7 +19,7 @@ member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_spo
 
         response_message rmsg;
         rmsg.blinded_group_secret_int_ = 8;
-        rmsg.blinded_member_secret_int_ = 16;
+        rmsg.blinded_sponsor_secret_int_ = 16;
         rmsg.member_count_ = 32;
         rmsg.offered_service_ = 64;
         send(&rmsg, sizeof(response_message));
@@ -53,7 +53,7 @@ void member::received_data(void* _data, std::size_t _bytes_recvd) {
     case message_type::RESPONSE: {
         response_message* rcvd_response_message = reinterpret_cast<response_message*>(rcvd_message);
         std::cout << rcvd_response_message->blinded_group_secret_int_ << std::endl;
-        std::cout << rcvd_response_message->blinded_member_secret_int_ << std::endl;
+        std::cout << rcvd_response_message->blinded_sponsor_secret_int_ << std::endl;
         std::cout << rcvd_response_message->member_count_ << std::endl;
         std::cout << rcvd_response_message->offered_service_ << std::endl;
     }
