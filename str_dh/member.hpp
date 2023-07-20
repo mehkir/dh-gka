@@ -26,8 +26,8 @@ private:
 public:
     member(bool _is_sponsor, service_id_t _service_id);
     ~member();
-    void received_data(void* data, std::size_t bytes_recvd);
-    void send(std::string message);
+    void received_data(void* _data, std::size_t _bytes_recvd);
+    void send(void* _data, std::size_t _data_byte_size);
     void start();
 
 };
