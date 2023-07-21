@@ -1,4 +1,5 @@
 #include "multicast_application_impl.hpp"
+#include "logger.hpp"
 
 class multicast_app : public multicast_application_impl {
 public:
@@ -8,13 +9,12 @@ public:
     ~multicast_app() {
     }
 
-    void received_data(void* data, std::size_t bytes_recvd) override {
-        std::cout.write(reinterpret_cast<const char*>(data), bytes_recvd);
-        std::cout << std::endl;
+    void received_data(unsigned char* _data, size_t _bytes_recvd) override {
+        LOG_DEBUG(_data)
     }
 
-    void send(std::string message) {
-      multicast_application_impl::send(message);
+    void send(boost::asio::streambuf& buffer) {
+      multicast_application_impl::send(buffer);
     }
 
     void start() {

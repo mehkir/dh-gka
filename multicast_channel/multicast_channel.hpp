@@ -1,7 +1,6 @@
 #ifndef STR_DH_MULTICAST_CHANNEL
 #define STR_DH_MULTICAST_CHANNEL
 
-#include <iostream>
 #include <string>
 #include <sstream>
 #include <boost/asio.hpp>
@@ -19,8 +18,8 @@ private:
   boost::asio::ip::udp::endpoint remote_endpoint_;
   std::string message_;
   enum { max_length = 1024 };
-  char multicast_data_[max_length];
-  char unicast_data_[max_length];
+  unsigned char unicast_data_[max_length];
+  unsigned char multicast_data_[max_length];
   multicast_application& mc_app_;
 private:
 /* Methods */
@@ -36,6 +35,6 @@ public:
     const boost::asio::ip::address& _multicast_address,
     int _multicast_port, multicast_application& _mc_app);
   ~multicast_channel();
-  void send(std::string message);
+  void send(boost::asio::streambuf& buffer);
 };
 #endif

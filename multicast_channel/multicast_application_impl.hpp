@@ -9,7 +9,7 @@ class multicast_application_impl : public multicast_application {
       multicast_application_impl();
       ~multicast_application_impl();
     protected:
-      void send(std::string _message);
+      void send(boost::asio::streambuf& buffer);
       void start();
     private:
       boost::asio::io_service io_service_; // MUST be listed BEFORE unique_ptr

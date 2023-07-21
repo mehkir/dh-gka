@@ -1,6 +1,8 @@
 #ifndef STR_DH_LOGGER
 #define STR_DH_LOGGER
 
+#include <iostream>
+
 #define LOG
 #ifdef LOG
     #define LOG_DEBUG(m) {       \
