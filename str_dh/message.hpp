@@ -1,8 +1,6 @@
 #ifndef STR_DH_MESSAGE
 #define STR_DH_MESSAGE
 
-#define LAST_IP_FIELD_IDX 3
-
 #include "primitives.hpp"
 #include <vector>
 #include <sstream>
@@ -18,14 +16,18 @@
 #include <boost/algorithm/string.hpp>
 #include "logger.hpp"
 
+#define LAST_IP_FIELD_IDX 3
+#define MESSAGE_ID_SIZE 1 
+
 enum message_type {
+    NONE,
     FIND,
     OFFER,
     REQUEST,
     RESPONSE
 };
 
-std::vector<unsigned char> get_cryptopp_integer_as_byte_vector(CryptoPP::Integer _integer) {
+static std::vector<unsigned char> get_cryptopp_integer_as_byte_vector(CryptoPP::Integer _integer) {
     LOG_DEBUG("[<message.hpp>]: get_cryptopp_integer_as_byte_vector")
     std::vector<unsigned char> byte_vector;
     for (size_t i = 0; i < _integer.ByteCount(); i++) {
@@ -34,7 +36,7 @@ std::vector<unsigned char> get_cryptopp_integer_as_byte_vector(CryptoPP::Integer
     return byte_vector;
 }
 
-CryptoPP::Integer get_byte_vector_as_cryptopp_integer(std::vector<unsigned char> _byte_vector) {
+static CryptoPP::Integer get_byte_vector_as_cryptopp_integer(std::vector<unsigned char> _byte_vector) {
     LOG_DEBUG("[<message.hpp>]: get_byte_vector_as_cryptopp_integer")
     CryptoPP::Integer integer;
     for (size_t i = 0; i < _byte_vector.size(); i++) {
@@ -43,7 +45,7 @@ CryptoPP::Integer get_byte_vector_as_cryptopp_integer(std::vector<unsigned char>
     return integer;
 }
 
-std::vector<unsigned char> get_ipv4_address_as_byte_vector(boost::asio::ip::address_v4 _ip_address) {
+static std::vector<unsigned char> get_ipv4_address_as_byte_vector(boost::asio::ip::address_v4 _ip_address) {
     LOG_DEBUG("[<message.hpp>]: get_ipv4_address_as_byte_vector")
     std::vector<std::string> ip_fields;
     std::vector<unsigned char> byte_vector;
@@ -54,7 +56,19 @@ std::vector<unsigned char> get_ipv4_address_as_byte_vector(boost::asio::ip::addr
     return byte_vector;
 }
 
-boost::asio::ip::address_v4 get_byte_vector_as_ipv4_address(std::vector<unsigned char> _byte_vector) {
+static void read_from_streambuf(boost::asio::streambuf& _buffer, char* _data, std::streamsize _byte_count){
+    LOG_DEBUG("[<message.hpp>]: read_from_streambuf")
+    std::istream iss(&_buffer);
+    iss.read(_data, _byte_count);
+}
+
+static void write_to_streambuf(boost::asio::streambuf& _buffer, const char* _data, std::streamsize _byte_count) {
+    LOG_DEBUG("[<message.hpp>]: write_to_streambuf")
+    std::ostream oss(&_buffer);
+    oss.write(_data, _byte_count);
+}
+
+static boost::asio::ip::address_v4 get_byte_vector_as_ipv4_address(std::vector<unsigned char> _byte_vector) {
     LOG_DEBUG("[<message.hpp>]: get_byte_vector_as_ipv4_address")
     std::stringstream ss;
     for (size_t i = 0; i < _byte_vector.size(); i++) {
@@ -66,7 +80,11 @@ boost::asio::ip::address_v4 get_byte_vector_as_ipv4_address(std::vector<unsigned
 
 struct message {
     public:
-        message_type message_type_;
+        message() {
+            message_type_ = message_type::NONE;
+            LOG_DEBUG("[<message>]: initialization complete")
+        }
+        message_id_t message_type_;
         virtual void serialize_(boost::asio::streambuf& _buffer) {
             LOG_DEBUG("[<message>]: serialize_")
             make_members_serializable();
