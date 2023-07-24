@@ -52,7 +52,7 @@ void multicast_channel::handle_send_to(const boost::system::error_code& _error) 
 void multicast_channel::receive_multicast() {
   LOG_DEBUG("[<multicast_channel>]: receive multicast ...")
   multicast_socket_.async_receive_from(
-  boost::asio::buffer(multicast_data_, max_length), remote_endpoint_,
+  boost::asio::buffer(multicast_data_, max_length), multicast_remote_endpoint_,
   boost::bind(&multicast_channel::handle_multicast_receive_from, this,
         boost::asio::placeholders::error,
         boost::asio::placeholders::bytes_transferred));
@@ -61,7 +61,7 @@ void multicast_channel::receive_multicast() {
 void multicast_channel::receive_unicast() {
   LOG_DEBUG("[<multicast_channel>]: receive unicast ...")
   unicast_socket_.async_receive_from(
-  boost::asio::buffer(unicast_data_, max_length), remote_endpoint_,
+  boost::asio::buffer(unicast_data_, max_length), unicast_remote_endpoint_,
   boost::bind(&multicast_channel::handle_unicast_receive_from, this,
         boost::asio::placeholders::error,
         boost::asio::placeholders::bytes_transferred));
@@ -73,8 +73,8 @@ void multicast_channel::handle_multicast_receive_from(const boost::system::error
     std::cerr << _error.what() << std::endl;
   }
 
-  if (unicast_socket_.local_endpoint().port() != remote_endpoint_.port()) {
-    mc_app_.received_data(multicast_data_, _bytes_recvd);
+  if (unicast_socket_.local_endpoint().port() != multicast_remote_endpoint_.port()) {
+    mc_app_.received_data(multicast_data_, _bytes_recvd, multicast_remote_endpoint_);
   }
   receive_multicast();
 }
@@ -85,8 +85,8 @@ void multicast_channel::handle_unicast_receive_from(const boost::system::error_c
     std::cerr << _error.what() << std::endl;
   }
 
-  if (unicast_socket_.local_endpoint().port() != remote_endpoint_.port()) {
-    mc_app_.received_data(unicast_data_, _bytes_recvd);
+  if (unicast_socket_.local_endpoint().port() != unicast_remote_endpoint_.port()) {
+    mc_app_.received_data(unicast_data_, _bytes_recvd, unicast_remote_endpoint_);
   }
   receive_unicast();
 }

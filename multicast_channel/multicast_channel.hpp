@@ -15,7 +15,8 @@ private:
   boost::asio::ip::udp::socket unicast_socket_;
   boost::asio::ip::udp::socket multicast_socket_;
   boost::asio::ip::udp::endpoint multicast_endpoint_;
-  boost::asio::ip::udp::endpoint remote_endpoint_;
+  boost::asio::ip::udp::endpoint unicast_remote_endpoint_;
+  boost::asio::ip::udp::endpoint multicast_remote_endpoint_;
   std::string message_;
   enum { max_length = 1024 };
   unsigned char unicast_data_[max_length];

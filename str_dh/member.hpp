@@ -9,6 +9,7 @@
 #include <map>
 
 class member : public multicast_application_impl {
+// Variables
 private:
     CryptoPP::DH diffie_hellman_;
     CryptoPP::AutoSeededRandomPool rnd_;
@@ -23,12 +24,20 @@ private:
     service_id_t offered_service_ = -1;
     member_id_t member_id = -1;
     member_count_t member_count_ = 1;
+// Methods
 public:
     member(bool _is_sponsor, service_id_t _service_id);
     ~member();
-    virtual void received_data(unsigned char* _data, size_t _bytes_recvd) override;
+    virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     void send(boost::asio::streambuf& buffer);
     void start();
+private:
+    message_id_t extract_message_id(boost::asio::streambuf& buffer);
+    void process_find(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+
 
 };
 

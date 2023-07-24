@@ -9,7 +9,7 @@ public:
     ~multicast_app() {
     }
 
-    void received_data(unsigned char* _data, size_t _bytes_recvd) override {
+    void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override {
         LOG_DEBUG(_data)
     }
 
