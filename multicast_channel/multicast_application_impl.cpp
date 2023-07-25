@@ -28,3 +28,8 @@ void multicast_application_impl::start() {
   }
   LOG_DEBUG("[<multicast_application_impl>]: io service started")
 }
+
+boost::asio::ip::udp::endpoint multicast_application_impl::get_local_endpoint() const {
+  LOG_DEBUG("[<multicast_application_impl>]: get_local_endpoint")
+  return multicast_channel_->get_local_endpoint();
+}

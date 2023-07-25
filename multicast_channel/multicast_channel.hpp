@@ -37,5 +37,6 @@ public:
     int _multicast_port, multicast_application& _mc_app);
   ~multicast_channel();
   void send(boost::asio::streambuf& buffer);
+  boost::asio::ip::udp::endpoint get_local_endpoint() const;
 };
 #endif

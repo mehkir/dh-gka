@@ -90,3 +90,8 @@ void multicast_channel::handle_unicast_receive_from(const boost::system::error_c
   }
   receive_unicast();
 }
+
+boost::asio::ip::udp::endpoint multicast_channel::get_local_endpoint() const {
+  LOG_DEBUG("[<multicast_channel>]: get_local_endpoint")
+  return unicast_socket_.local_endpoint();
+}
