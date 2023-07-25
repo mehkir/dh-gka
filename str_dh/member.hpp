@@ -4,6 +4,7 @@
 #include "multicast_application_impl.hpp"
 #include "str_key_tree.hpp"
 #include "primitives.hpp"
+#include "message.hpp"
 #include <cryptopp/dh.h>
 #include <cryptopp/osrng.h>
 #include <map>
@@ -29,7 +30,7 @@ public:
     member(bool _is_sponsor, service_id_t _service_id);
     ~member();
     virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
-    void send(boost::asio::streambuf& buffer);
+    void send(message& _message);
     void start();
 private:
     message_id_t extract_message_id(boost::asio::streambuf& buffer);
