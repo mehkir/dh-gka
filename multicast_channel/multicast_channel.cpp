@@ -13,17 +13,15 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
       unicast_socket_(_io_service),
       mc_app_(_mc_app) {
     // Create the multicast socket and bind it to the multicast address and port
-    boost::asio::ip::udp::endpoint listen_endpoint(
-        _listen_interface_by_address, _multicast_port);
     multicast_socket_.open(boost::asio::ip::udp::v4());
     multicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-    multicast_socket_.bind(listen_endpoint);
+    multicast_socket_.bind(boost::asio::ip::udp::endpoint(_multicast_address, _multicast_port));
     // Join the multicast group.
     multicast_socket_.set_option(boost::asio::ip::multicast::join_group(_multicast_address));
     // Create the unicast socket and bind it to an open port
     unicast_socket_.open(boost::asio::ip::udp::v4());
     unicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-    unicast_socket_.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
+    unicast_socket_.bind(boost::asio::ip::udp::endpoint(_listen_interface_by_address, 0));
     receive_multicast();
     receive_unicast();
     LOG_DEBUG("[<multicast_channel>]: initialization complete")
@@ -93,5 +91,7 @@ void multicast_channel::handle_unicast_receive_from(const boost::system::error_c
 
 boost::asio::ip::udp::endpoint multicast_channel::get_local_endpoint() const {
   LOG_DEBUG("[<multicast_channel>]: get_local_endpoint")
+  LOG_DEBUG("ip address: " << unicast_socket_.local_endpoint().address().to_string())
+  LOG_DEBUG("port: " << unicast_socket_.local_endpoint().port())
   return unicast_socket_.local_endpoint();
 }

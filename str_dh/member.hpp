@@ -11,7 +11,10 @@
 #include <tuple>
 #include <mutex>
 
+#define DEFAULT_MEMBER_ID -1
+
 typedef CryptoPP::Integer blinded_secret_int_t;
+typedef CryptoPP::Integer secret_int_t;
 
 class member : public multicast_application_impl {
 // Variables
@@ -31,7 +34,7 @@ private:
     //service_id_t required_service_ = -1;
     //service_id_t offered_service_ = -1;
     service_id_t service_of_interest_ = -1;
-    member_id_t member_id_ = -1;
+    member_id_t member_id_ = DEFAULT_MEMBER_ID;
 // Methods
 public:
     member(bool _is_sponsor, service_id_t _service_id);
