@@ -116,20 +116,21 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
         str_tree->root_node_.blinded_group_secret_ = -1;
         str_tree->leaf_node_.member_secret_ = -1;
         str_tree->leaf_node_.blinded_member_secret_ = rcvd_request_message.blinded_secret_int_;
-        str_tree->next_internal_node_ = std::move(previous_str_tree);
-        str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-        LOG_DEBUG("[<member>]: sponsor id=" << member_id_ << ", group secret=" << str_key_tree_map_[service_of_interest_]->root_node_.group_secret_ << " of service " << service_of_interest_)
+        LOG_DEBUG("[<member>]: sponsor id=" << member_id_ << ", group secret=" << str_tree->root_node_.group_secret_ << " of service " << service_of_interest_)
 
         is_sponsor_ = false;
         std::unique_ptr<response_message> response = std::make_unique<response_message>();
-        response->blinded_group_secret_int_ = str_key_tree_map_[service_of_interest_]->next_internal_node_->root_node_.blinded_group_secret_;
+        response->blinded_group_secret_int_ = previous_str_tree->root_node_.blinded_group_secret_;
         response->blinded_sponsor_secret_int_ = blinded_secret_int_;
         response->member_count_ = member_count_[rcvd_request_message.required_service_]+1; // 1 stands for this member
         response->new_sponsor.assigned_id_ = member_id_+1;
         response->new_sponsor.ip_address_ = _remote_endpoint.address();
         response->new_sponsor.port_ = _remote_endpoint.port();
         response->offered_service_ = service_of_interest_;
+
+        str_tree->next_internal_node_ = std::move(previous_str_tree);
+        str_key_tree_map_[service_of_interest_] = std::move(str_tree);
         member_blinded_secrets_cache_.erase(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_));
         send(response.operator*());
     }
