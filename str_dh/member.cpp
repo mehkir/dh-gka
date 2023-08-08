@@ -11,6 +11,7 @@ member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_spo
     diffie_hellman_.GeneratePublicKey(rnd_, secret_, blinded_secret_);
     secret_int_.Decode(secret_.BytePtr(), secret_.SizeInBytes());
     blinded_secret_int_.Decode(blinded_secret_.BytePtr(), blinded_secret_.SizeInBytes());
+
     if (is_sponsor_) {
         member_id_ = 1;
         std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
@@ -113,8 +114,8 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
         std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
         std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
         str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(rcvd_request_message.blinded_secret_int_, previous_str_tree->root_node_.group_secret_, p);
-        str_tree->root_node_.blinded_group_secret_ = -1;
-        str_tree->leaf_node_.member_secret_ = -1;
+        str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
+        str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
         str_tree->leaf_node_.blinded_member_secret_ = rcvd_request_message.blinded_secret_int_;
 
         LOG_DEBUG("[<member>]: sponsor id=" << member_id_ << ", group secret=" << str_tree->root_node_.group_secret_ << " of service " << service_of_interest_)
@@ -131,7 +132,7 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
 
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
-        member_blinded_secrets_cache_.erase(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_));
+        //member_blinded_secrets_cache_.erase(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_));
         send(response.operator*());
     }
 }
@@ -158,9 +159,9 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
         str_tree->leaf_node_.blinded_member_secret_ = blinded_secret_int_;
 
         std::unique_ptr<str_key_tree> previous_str_tree = std::make_unique<str_key_tree>();
-        previous_str_tree->root_node_.group_secret_ = -1;
+        previous_str_tree->root_node_.group_secret_ = DEFAULT_VALUE;
         previous_str_tree->leaf_node_.blinded_member_secret_ = rcvd_response_message.blinded_sponsor_secret_int_;
-        previous_str_tree->leaf_node_.member_secret_ = -1;
+        previous_str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
         previous_str_tree->root_node_.blinded_group_secret_ = rcvd_response_message.blinded_group_secret_int_;
 
         str_tree->next_internal_node_ = std::move(previous_str_tree);
@@ -174,8 +175,8 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
         std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
         secret_int_t group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
         str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(member_blinded_secrets_cache_[member_cache_key], group_secret, p);
-        str_tree->root_node_.blinded_group_secret_ = -1;
-        str_tree->leaf_node_.member_secret_ = -1;
+        str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
+        str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
         str_tree->leaf_node_.blinded_member_secret_ = member_blinded_secrets_cache_[member_cache_key];
 
         std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);

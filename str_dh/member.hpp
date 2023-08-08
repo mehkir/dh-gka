@@ -8,13 +8,24 @@
 #include <cryptopp/dh.h>
 #include <cryptopp/osrng.h>
 #include <map>
+#include <set>
 #include <tuple>
 #include <mutex>
 
 #define DEFAULT_MEMBER_ID -1
+#define DEFAULT_VALUE -1
 
 typedef CryptoPP::Integer blinded_secret_int_t;
 typedef CryptoPP::Integer secret_int_t;
+
+struct sorted_member_entry {
+    member_id_t member_id_;
+    boost::asio::ip::udp::endpoint endpoint_;
+    
+    friend bool operator<(const sorted_member_entry &lhs, const sorted_member_entry &rhs) {
+	    return lhs.member_id_ < rhs.member_id_;
+    }
+};
 
 class member : public multicast_application_impl {
 // Variables
@@ -31,9 +42,11 @@ private:
     std::map<service_id_t, member_count_t> member_count_;
     std::mutex receive_mutex_;
 
+    std::set<sorted_member_entry> assigned_members;
+
     //service_id_t required_service_ = -1;
     //service_id_t offered_service_ = -1;
-    service_id_t service_of_interest_ = -1;
+    service_id_t service_of_interest_ = DEFAULT_VALUE;
     member_id_t member_id_ = DEFAULT_MEMBER_ID;
 // Methods
 public:
