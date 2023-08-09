@@ -40,9 +40,8 @@ private:
     CryptoPP::Integer secret_int_;
     CryptoPP::Integer blinded_secret_int_;
     std::map<service_id_t, std::unique_ptr<str_key_tree>> str_key_tree_map_;
-    std::map<std::tuple<boost::asio::ip::udp::endpoint, service_id_t>, blinded_secret_int_t> member_blinded_secrets_cache_; // could be actually pending requests
-    std::map<service_id_t, member_count_t> member_count_;
-    std::set<sorted_member_entry> assigned_members_;
+    std::map<std::tuple<boost::asio::ip::udp::endpoint, service_id_t>, blinded_secret_int_t> pending_requests_;
+    std::map<service_id_t, std::set<sorted_member_entry>> assigned_members_map_;
     std::mutex receive_mutex_;
 
     //service_id_t required_service_ = -1;

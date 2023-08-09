@@ -233,7 +233,6 @@ struct response_message : offer_message {
         }
         CryptoPP::Integer blinded_sponsor_secret_int_;
         CryptoPP::Integer blinded_group_secret_int_;
-        member_count_t member_count_;
         struct new_sponsor {
             public:
                 boost::asio::ip::address ip_address_;
@@ -279,7 +278,6 @@ struct response_message : offer_message {
             ar & boost::serialization::base_object<offer_message>(*this);
             ar & blinded_sponsor_secret_int_bytes_;
             ar & blinded_group_secret_int_bytes_;
-            ar & member_count_;
             ar & new_sponsor.ip_address_bytes_;
             ar & new_sponsor.port_;
             ar & new_sponsor.assigned_id_;

@@ -3,7 +3,7 @@
 #include "logger.hpp"
 #include <cryptopp/nbtheory.h>
 
-member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id) {
+member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), keys_computed_count_(0) {
     diffie_hellman_.AccessGroupParameters().Initialize(p, q, g);
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
@@ -105,9 +105,8 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
     rcvd_request_message.deserialize_(buffer);
     LOG_DEBUG("blinded secret: " << rcvd_request_message.blinded_secret_int_)
     LOG_DEBUG("required service: " << rcvd_request_message.required_service_)
-    if (!member_blinded_secrets_cache_.contains(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_))) {
-        member_blinded_secrets_cache_[std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_)] = rcvd_request_message.blinded_secret_int_;
-        member_count_[rcvd_request_message.required_service_]++;
+    if (!pending_requests_.contains(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_))) {
+        pending_requests_[std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_)] = rcvd_request_message.blinded_secret_int_;
     }
 
     if (is_sponsor_ && rcvd_request_message.required_service_ == service_of_interest_) {
@@ -124,7 +123,6 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
         std::unique_ptr<response_message> response = std::make_unique<response_message>();
         response->blinded_group_secret_int_ = previous_str_tree->root_node_.blinded_group_secret_;
         response->blinded_sponsor_secret_int_ = blinded_secret_int_;
-        response->member_count_ = member_count_[rcvd_request_message.required_service_]+1; // 1 stands for this member
         response->new_sponsor.assigned_id_ = member_id_+1;
         response->new_sponsor.ip_address_ = _remote_endpoint.address();
         response->new_sponsor.port_ = _remote_endpoint.port();
@@ -132,7 +130,14 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
 
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
-        //member_blinded_secrets_cache_.erase(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_));
+
+        sorted_member_entry next_sponsor;
+        next_sponsor.member_id_ = response->new_sponsor.assigned_id_;
+        next_sponsor.endpoint_ = _remote_endpoint;
+        next_sponsor.blinded_secret_ = rcvd_request_message.blinded_secret_int_;
+        assigned_members_map_[rcvd_request_message.required_service_].insert(next_sponsor);
+        keys_computed_count_++;
+        pending_requests_.erase(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_));
         send(response.operator*());
     }
 }
@@ -142,7 +147,6 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
     rcvd_response_message.deserialize_(buffer);
     LOG_DEBUG("blinded group secret: " << rcvd_response_message.blinded_group_secret_int_)
     LOG_DEBUG("blinded sponsor secret: " << rcvd_response_message.blinded_sponsor_secret_int_)
-    LOG_DEBUG("member count: " << rcvd_response_message.member_count_)
     LOG_DEBUG("offered service: " << rcvd_response_message.offered_service_)
     LOG_DEBUG("assigned id: " << rcvd_response_message.new_sponsor.assigned_id_)
     LOG_DEBUG("ip address: " << rcvd_response_message.new_sponsor.ip_address_)
@@ -168,20 +172,48 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
     }
 
+    bool successor_blinded_key_available = false;
     if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID && member_id_ < rcvd_response_message.new_sponsor.assigned_id_ && rcvd_response_message.offered_service_ == service_of_interest_) { // TODO track how many members are calculated.. otherwise missed responses could break the order for group key computation
-        boost::asio::ip::udp::endpoint new_sponsor_endpoint(rcvd_response_message.new_sponsor.ip_address_, rcvd_response_message.new_sponsor.port_);
-        std::tuple member_cache_key = std::make_tuple(new_sponsor_endpoint, service_of_interest_);
-        
-        std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
-        secret_int_t group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
-        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(member_blinded_secrets_cache_[member_cache_key], group_secret, p);
-        str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.blinded_member_secret_ = member_blinded_secrets_cache_[member_cache_key];
+        pending_requests_.erase(std::make_tuple(new_sponsor_endpoint, rcvd_response_message.offered_service_));
 
-        std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
-        str_tree->next_internal_node_ = std::move(previous_str_tree);
-        str_key_tree_map_[service_of_interest_] = std::move(str_tree);
+        sorted_member_entry new_sponsor;
+        new_sponsor.member_id_ = rcvd_response_message.new_sponsor.assigned_id_;
+        new_sponsor.endpoint_ = new_sponsor_endpoint;
+        new_sponsor.blinded_secret_ = pending_requests_[std::make_tuple(new_sponsor_endpoint, rcvd_response_message.offered_service_)];
+        assigned_members_map_[rcvd_response_message.offered_service_].insert(new_sponsor);
+        pending_requests_.erase(std::make_tuple(new_sponsor_endpoint, rcvd_response_message.offered_service_));
+
+        int next_needed_member_id = keys_computed_count_ + member_id_ + 1;
+        sorted_member_entry dummy;
+        dummy.member_id_ = next_needed_member_id;
+        successor_blinded_key_available = keys_computed_count_ < assigned_members_map_[rcvd_response_message.offered_service_].size() 
+                                            && assigned_members_map_[rcvd_response_message.offered_service_].contains(dummy);
+    }
+
+    if (successor_blinded_key_available) {
+        std::set<sorted_member_entry>::iterator it = assigned_members_map_[rcvd_response_message.offered_service_].begin();
+        std::advance(it, keys_computed_count_);
+
+        do
+        {
+            std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
+            secret_int_t group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
+            str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(it.operator*().blinded_secret_, group_secret, p);
+            str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
+            str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
+            str_tree->leaf_node_.blinded_member_secret_ = it.operator*().blinded_secret_;
+
+            std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
+            str_tree->next_internal_node_ = std::move(previous_str_tree);
+            str_key_tree_map_[service_of_interest_] = std::move(str_tree);
+
+            std::advance(it, 1);
+            keys_computed_count_++;
+            int next_needed_member_id = keys_computed_count_ + member_id_ + 1;
+            if (it.operator*().member_id_ != next_needed_member_id) {
+                break;
+            }
+        } while (it != assigned_members_map_[rcvd_response_message.offered_service_].end());
     }
 
     if (member_id_ != DEFAULT_MEMBER_ID) {
