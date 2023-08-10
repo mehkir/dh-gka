@@ -105,8 +105,9 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
     rcvd_request_message.deserialize_(buffer);
     LOG_DEBUG("blinded secret: " << rcvd_request_message.blinded_secret_int_)
     LOG_DEBUG("required service: " << rcvd_request_message.required_service_)
-    if (!pending_requests_.contains(std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_))) {
-        pending_requests_[std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_)] = rcvd_request_message.blinded_secret_int_;
+    std::tuple<boost::asio::ip::udp::endpoint, service_id_t> request_key = std::make_tuple(_remote_endpoint, rcvd_request_message.required_service_);
+    if (!pending_requests_.contains(request_key)) {
+        pending_requests_[request_key] = rcvd_request_message.blinded_secret_int_;
     }
 
     if (is_sponsor_ && rcvd_request_message.required_service_ == service_of_interest_) {
