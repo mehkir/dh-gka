@@ -7,7 +7,7 @@
 #include "message.hpp"
 #include <cryptopp/dh.h>
 #include <cryptopp/osrng.h>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <tuple>
 #include <mutex>
@@ -17,16 +17,6 @@
 
 typedef CryptoPP::Integer blinded_secret_int_t;
 typedef CryptoPP::Integer secret_int_t;
-
-struct sorted_member_entry {
-    member_id_t member_id_;
-    boost::asio::ip::udp::endpoint endpoint_;
-    blinded_secret_int_t blinded_secret_;
-    
-    friend bool operator<(const sorted_member_entry &lhs, const sorted_member_entry &rhs) {
-	    return lhs.member_id_ < rhs.member_id_;
-    }
-};
 
 class member : public multicast_application_impl {
 // Variables
@@ -39,13 +29,12 @@ private:
     CryptoPP::SecByteBlock blinded_secret_;
     CryptoPP::Integer secret_int_;
     CryptoPP::Integer blinded_secret_int_;
-    std::map<service_id_t, std::unique_ptr<str_key_tree>> str_key_tree_map_;
-    std::map<std::tuple<boost::asio::ip::udp::endpoint, service_id_t>, blinded_secret_int_t> pending_requests_;
-    std::map<service_id_t, std::set<sorted_member_entry>> assigned_members_map_;
+    std::unordered_map<service_id_t, std::unique_ptr<str_key_tree>> str_key_tree_map_;
+    std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint, blinded_secret_int_t>> pending_requests_;
+    std::unordered_map<service_id_t, std::unordered_map<member_id_t,blinded_secret_int_t>> assigned_member_key_map_;
+    std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint,member_id_t>> assigned_member_endpoint_map_;
     std::mutex receive_mutex_;
 
-    //service_id_t required_service_ = -1;
-    //service_id_t offered_service_ = -1;
     service_id_t service_of_interest_ = DEFAULT_VALUE;
     member_id_t member_id_ = DEFAULT_MEMBER_ID;
 // Methods
@@ -61,6 +50,7 @@ private:
     void process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    blinded_secret_int_t get_next_blinded_key();
 
 
 };
