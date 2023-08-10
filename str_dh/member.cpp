@@ -174,7 +174,7 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
     }
 
     bool successor_blinded_key_available = false;
-    if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID && member_id_ < rcvd_response_message.new_sponsor.assigned_id_ && rcvd_response_message.offered_service_ == service_of_interest_) { // TODO track how many members are calculated.. otherwise missed responses could break the order for group key computation
+    if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID && member_id_ < rcvd_response_message.new_sponsor.assigned_id_ && rcvd_response_message.offered_service_ == service_of_interest_) {
         sorted_member_entry new_sponsor;
         new_sponsor.member_id_ = rcvd_response_message.new_sponsor.assigned_id_;
         new_sponsor.endpoint_ = new_sponsor_endpoint;
