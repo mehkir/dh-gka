@@ -110,13 +110,16 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
         pending_requests_[rcvd_request_message.required_service_][_remote_endpoint] = rcvd_request_message.blinded_secret_int_;
     }
 
-    if (is_sponsor_ && pending_requests_[service_of_interest_].contains(_remote_endpoint)) { // TODO better is to take a random one out
+    if (is_sponsor_ && !pending_requests_[service_of_interest_].empty()) {
+        boost::asio::ip::udp::endpoint pending_remote_endpoint = pending_requests_[service_of_interest_].begin().operator*().first;
+        blinded_secret_int_t pending_blinded_secret = pending_requests_[service_of_interest_].begin().operator*().second;
+
         std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
         std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
-        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(rcvd_request_message.blinded_secret_int_, previous_str_tree->root_node_.group_secret_, p);
+        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(pending_blinded_secret, previous_str_tree->root_node_.group_secret_, p);
         str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
         str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.blinded_member_secret_ = rcvd_request_message.blinded_secret_int_;
+        str_tree->leaf_node_.blinded_member_secret_ = pending_blinded_secret;
 
         LOG_DEBUG("[<member>]: sponsor id=" << member_id_ << ", group secret=" << str_tree->root_node_.group_secret_ << " of service " << service_of_interest_)
 
@@ -125,18 +128,18 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
         response->blinded_group_secret_int_ = previous_str_tree->root_node_.blinded_group_secret_;
         response->blinded_sponsor_secret_int_ = blinded_secret_int_;
         response->new_sponsor.assigned_id_ = member_id_+1;
-        response->new_sponsor.ip_address_ = _remote_endpoint.address();
-        response->new_sponsor.port_ = _remote_endpoint.port();
+        response->new_sponsor.ip_address_ = pending_remote_endpoint.address();
+        response->new_sponsor.port_ = pending_remote_endpoint.port();
         response->offered_service_ = service_of_interest_;
 
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-        assigned_member_key_map_[rcvd_request_message.required_service_][response->new_sponsor.assigned_id_] = rcvd_request_message.blinded_secret_int_;
-        assigned_member_endpoint_map_[rcvd_request_message.required_service_][_remote_endpoint] = response->new_sponsor.assigned_id_;
+        assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
+        assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
 
         keys_computed_count_++;
-        pending_requests_[service_of_interest_].erase(_remote_endpoint);
+        pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
         send(response.operator*());
     }
 }
