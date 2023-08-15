@@ -29,7 +29,7 @@ member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_spo
         initial_find->required_service_ = service_of_interest_;
         send(initial_find.operator*());
     }
-    LOG_DEBUG("[<member>]: initialization complete")
+    LOG_DEBUG("[<member>]: initialization complete, IP=" << get_local_endpoint().address().to_string() << " Port=" << get_local_endpoint().port())
 }
 
 member::~member() {
@@ -205,9 +205,9 @@ void member::process_pending_request() {
 
         assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
         assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
+        pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
 
         keys_computed_count_++;
-        pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
         send(response.operator*());
     }
 }
