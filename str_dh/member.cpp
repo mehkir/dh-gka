@@ -78,6 +78,8 @@ message_id_t member::extract_message_id(boost::asio::streambuf& buffer) {
 void member::process_find(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     find_message rcvd_find_message;
     rcvd_find_message.deserialize_(buffer);
+    LOG_DEBUG("remote ip: " << _remote_endpoint.address().to_string())
+    LOG_DEBUG("remote port: " << _remote_endpoint.port())
     LOG_DEBUG("required service: " << rcvd_find_message.required_service_)
 
     if (is_sponsor_ && service_of_interest_ == rcvd_find_message.required_service_) {
@@ -90,6 +92,8 @@ void member::process_find(boost::asio::streambuf& buffer, boost::asio::ip::udp::
 void member::process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     offer_message rcvd_offer_message;
     rcvd_offer_message.deserialize_(buffer);
+    LOG_DEBUG("remote ip: " << _remote_endpoint.address().to_string())
+    LOG_DEBUG("remote port: " << _remote_endpoint.port())
     LOG_DEBUG("offered service: " << rcvd_offer_message.offered_service_)
 
     if (member_id_ == DEFAULT_MEMBER_ID && rcvd_offer_message.offered_service_ == service_of_interest_) {
@@ -103,6 +107,8 @@ void member::process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp:
 void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     request_message rcvd_request_message;
     rcvd_request_message.deserialize_(buffer);
+    LOG_DEBUG("remote ip: " << _remote_endpoint.address().to_string())
+    LOG_DEBUG("remote port: " << _remote_endpoint.port())
     LOG_DEBUG("blinded secret: " << rcvd_request_message.blinded_secret_int_)
     LOG_DEBUG("required service: " << rcvd_request_message.required_service_)
     if (!assigned_member_endpoint_map_[rcvd_request_message.required_service_].contains(_remote_endpoint)
@@ -115,6 +121,8 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
 void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     response_message rcvd_response_message;
     rcvd_response_message.deserialize_(buffer);
+    LOG_DEBUG("remote ip: " << _remote_endpoint.address().to_string())
+    LOG_DEBUG("remote port: " << _remote_endpoint.port())
     LOG_DEBUG("blinded group secret: " << rcvd_response_message.blinded_group_secret_int_)
     LOG_DEBUG("blinded sponsor secret: " << rcvd_response_message.blinded_sponsor_secret_int_)
     LOG_DEBUG("offered service: " << rcvd_response_message.offered_service_)
