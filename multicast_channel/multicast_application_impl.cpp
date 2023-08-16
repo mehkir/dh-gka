@@ -7,15 +7,15 @@ multicast_application_impl::multicast_application_impl() : multicast_channel_(st
                                             boost::asio::ip::address::from_string(MULTICAST_ADDRESS),
                                             65000,
                                             *this)){
-  LOG_DEBUG("[<multicast_application_impl>]: initialization complete")
+  //LOG_DEBUG("[<multicast_application_impl>]: initialization complete")
 }
 
 multicast_application_impl::~multicast_application_impl() {
-  LOG_DEBUG("[<multicast_application_impl>]: destruction complete")
+  //LOG_DEBUG("[<multicast_application_impl>]: destruction complete")
 }
 
 void multicast_application_impl::send(boost::asio::streambuf& buffer) {
-  LOG_DEBUG("[<multicast_application_impl>]: send")
+  //LOG_DEBUG("[<multicast_application_impl>]: send")
   multicast_channel_->send(buffer);
 }
 
@@ -26,10 +26,10 @@ void multicast_application_impl::start() {
   catch (std::exception& e) {
     std::cerr << "Exception: " << e.what() << "\n";
   }
-  LOG_DEBUG("[<multicast_application_impl>]: io service started")
+  //LOG_DEBUG("[<multicast_application_impl>]: io service started")
 }
 
 boost::asio::ip::udp::endpoint multicast_application_impl::get_local_endpoint() const {
-  LOG_DEBUG("[<multicast_application_impl>]: get_local_endpoint")
+  //LOG_DEBUG("[<multicast_application_impl>]: get_local_endpoint")
   return multicast_channel_->get_local_endpoint();
 }
