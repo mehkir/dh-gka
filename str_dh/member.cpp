@@ -152,7 +152,6 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
     }
 
-    bool successor_blinded_key_available = false;
     if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID && member_id_ < rcvd_response_message.new_sponsor.assigned_id_ && rcvd_response_message.offered_service_ == service_of_interest_) {
         assigned_member_key_map_[rcvd_response_message.offered_service_][rcvd_response_message.new_sponsor.assigned_id_] = pending_requests_[rcvd_response_message.offered_service_][new_sponsor_endpoint];
         assigned_member_endpoint_map_[rcvd_response_message.offered_service_][new_sponsor_endpoint] = rcvd_response_message.new_sponsor.assigned_id_;
@@ -184,38 +183,59 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
 
 void member::process_pending_request() {
     // LOG_DEBUG("<member>]: process_pending_request")
-    if (is_sponsor_ && !pending_requests_[service_of_interest_].empty()) {
-        boost::asio::ip::udp::endpoint pending_remote_endpoint = pending_requests_[service_of_interest_].begin().operator*().first;
-        blinded_secret_int_t pending_blinded_secret = pending_requests_[service_of_interest_].begin().operator*().second;
-
-        LOG_DEBUG("Compute group key with blinded secret from IP=" << pending_remote_endpoint.address().to_string() << ", Port=" << pending_remote_endpoint.port())
-
-        std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
-        std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
-        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(pending_blinded_secret, previous_str_tree->root_node_.group_secret_, p);
-        str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.blinded_member_secret_ = pending_blinded_secret;
-
-        is_sponsor_ = false;
-        std::unique_ptr<response_message> response = std::make_unique<response_message>();
-        response->blinded_group_secret_int_ = previous_str_tree->root_node_.blinded_group_secret_;
-        response->blinded_sponsor_secret_int_ = blinded_secret_int_;
-        response->new_sponsor.assigned_id_ = member_id_+1;
-        response->new_sponsor.ip_address_ = pending_remote_endpoint.address();
-        response->new_sponsor.port_ = pending_remote_endpoint.port();
-        response->offered_service_ = service_of_interest_;
-
-        str_tree->next_internal_node_ = std::move(previous_str_tree);
-        str_key_tree_map_[service_of_interest_] = std::move(str_tree);
-
-        assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
-        assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
-        pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
-
-        keys_computed_count_++;
-        send(response.operator*());
+    if (!is_sponsor_) {
+        return;
     }
+
+    if (assigned_member_endpoint_map_.count(service_of_interest_) < member_id_-1) {
+        return;
+    }
+
+    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> unassigned_member = get_unassigned_member();
+    boost::asio::ip::udp::endpoint pending_remote_endpoint = unassigned_member.first;
+    blinded_secret_int_t pending_blinded_secret = unassigned_member.second;
+
+    LOG_DEBUG("Compute group key with blinded secret from IP=" << pending_remote_endpoint.address().to_string() << ", Port=" << pending_remote_endpoint.port())
+
+    std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
+    std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
+    str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(pending_blinded_secret, previous_str_tree->root_node_.group_secret_, p);
+    str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
+    str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
+    str_tree->leaf_node_.blinded_member_secret_ = pending_blinded_secret;
+
+    is_sponsor_ = false;
+    std::unique_ptr<response_message> response = std::make_unique<response_message>();
+    response->blinded_group_secret_int_ = previous_str_tree->root_node_.blinded_group_secret_;
+    response->blinded_sponsor_secret_int_ = blinded_secret_int_;
+    response->new_sponsor.assigned_id_ = member_id_+1;
+    response->new_sponsor.ip_address_ = pending_remote_endpoint.address();
+    response->new_sponsor.port_ = pending_remote_endpoint.port();
+    response->offered_service_ = service_of_interest_;
+
+    str_tree->next_internal_node_ = std::move(previous_str_tree);
+    str_key_tree_map_[service_of_interest_] = std::move(str_tree);
+
+    assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
+    assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
+    //pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
+
+    keys_computed_count_++;
+    send(response.operator*());
+}
+
+std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> member::get_unassigned_member() {
+    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> unassigned_member;
+    for (auto member : pending_requests_[service_of_interest_]) {
+        boost::asio::ip::udp::endpoint member_endpoint = member.first;
+        blinded_secret_int_t member_blinded_secret = member.second;
+        if (!assigned_member_endpoint_map_[service_of_interest_].contains(member_endpoint)) {
+            unassigned_member = std::make_pair(member_endpoint, member_blinded_secret);
+            break;
+        }
+    }
+    pending_requests_[service_of_interest_].clear();
+    return unassigned_member;
 }
 
 void member::send(message& _message) {

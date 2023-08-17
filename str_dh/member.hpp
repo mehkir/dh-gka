@@ -52,8 +52,7 @@ private:
     void process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_pending_request();
     blinded_secret_int_t get_next_blinded_key();
-
-
+    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> get_unassigned_member();
 };
 
 #endif

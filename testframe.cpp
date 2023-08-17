@@ -1,6 +1,7 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include <unordered_map>
+#include <memory>
 
 int main () {
     boost::asio::ip::udp::endpoint ep1(boost::asio::ip::address::from_string("1.2.3.4"), 55);
@@ -12,4 +13,13 @@ int main () {
     for (auto ep : umap) {
         std::cout << ep.first << ", " << ep.second << std::endl;
     }
+
+    std::unique_ptr<int> my_int;
+    if(!my_int) {
+        std::cout << "null" << std::endl;
+    } else {
+        std::cout << "not null" << std::endl;
+    }
+
+    return 0;
 }
