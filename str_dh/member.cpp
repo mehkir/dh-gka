@@ -214,6 +214,7 @@ void member::process_pending_request() {
     }
 
     if (assigned_member_endpoint_map_.count(service_of_interest_) < member_id_-1) {
+        LOG_DEBUG("Send offer (not implemented yet)")
         return;
     }
 
