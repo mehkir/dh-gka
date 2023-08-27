@@ -53,6 +53,8 @@ private:
     void process_pending_request();
     blinded_secret_int_t get_next_blinded_key();
     std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> get_unassigned_member();
+    std::unique_ptr<str_key_tree> build_str_tree(CryptoPP::Integer _group_secret, CryptoPP::Integer _blinded_group_secret,
+                                                 CryptoPP::Integer _member_secret, CryptoPP::Integer _blinded_member_secret);
 };
 
 #endif
