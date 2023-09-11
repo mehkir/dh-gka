@@ -185,7 +185,7 @@ void member::process_pending_request() {
         return;
     }
 
-    if (assigned_member_endpoint_map_.count(service_of_interest_) < member_id_-1) { // all_predecessors_known?
+    if (assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1) { // all_predecessors_known?
         LOG_DEBUG("Request synch (not implemented yet)")
         return;
     }
