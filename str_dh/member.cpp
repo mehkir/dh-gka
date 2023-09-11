@@ -137,19 +137,14 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
     if (become_sponsor && member_id_ == DEFAULT_MEMBER_ID && rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
         member_id_ = rcvd_response_message.new_sponsor.assigned_id_;
-
-        std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
-        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(rcvd_response_message.blinded_group_secret_int_, secret_int_, P);
-        str_tree->root_node_.blinded_group_secret_ = CryptoPP::ModularExponentiation(G, str_tree->root_node_.group_secret_, P);
-        str_tree->leaf_node_.member_secret_ = secret_int_;
-        str_tree->leaf_node_.blinded_member_secret_ = blinded_secret_int_;
-
-        std::unique_ptr<str_key_tree> previous_str_tree = std::make_unique<str_key_tree>();
-        previous_str_tree->root_node_.group_secret_ = DEFAULT_VALUE;
-        previous_str_tree->leaf_node_.blinded_member_secret_ = rcvd_response_message.blinded_sponsor_secret_int_;
-        previous_str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-        previous_str_tree->root_node_.blinded_group_secret_ = rcvd_response_message.blinded_group_secret_int_;
-
+        std::unique_ptr<str_key_tree> str_tree = build_str_tree(CryptoPP::ModularExponentiation(rcvd_response_message.blinded_group_secret_int_, secret_int_, P),
+                                                                CryptoPP::ModularExponentiation(G, str_tree->root_node_.group_secret_, P),
+                                                                secret_int_,
+                                                                blinded_secret_int_);
+        std::unique_ptr<str_key_tree> previous_str_tree = build_str_tree(DEFAULT_VALUE,
+                                                                        rcvd_response_message.blinded_sponsor_secret_int_,
+                                                                        DEFAULT_VALUE,
+                                                                        rcvd_response_message.blinded_group_secret_int_);
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
@@ -163,13 +158,11 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
 
         blinded_secret_int_t next_blinded_key;
         while ((next_blinded_key = get_next_blinded_key()) != 0) {
-            std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
             secret_int_t group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
-            str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(next_blinded_key, group_secret, P);
-            str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
-            str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-            str_tree->leaf_node_.blinded_member_secret_ = next_blinded_key;
-
+            std::unique_ptr<str_key_tree> str_tree = build_str_tree(CryptoPP::ModularExponentiation(next_blinded_key, group_secret, P),
+                                                                    DEFAULT_VALUE,
+                                                                    DEFAULT_VALUE,
+                                                                    next_blinded_key);
             std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
             str_tree->next_internal_node_ = std::move(previous_str_tree);
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
@@ -203,11 +196,10 @@ void member::process_pending_request() {
     if (pending_remote_endpoint.address().to_string().compare(UNINITIALIZED_ADDRESS) != 0 && pending_blinded_secret != 0) {
 
         std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
-        std::unique_ptr<str_key_tree> str_tree = std::make_unique<str_key_tree>();
-        str_tree->root_node_.group_secret_ = CryptoPP::ModularExponentiation(pending_blinded_secret, previous_str_tree->root_node_.group_secret_, P);
-        str_tree->root_node_.blinded_group_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.member_secret_ = DEFAULT_VALUE;
-        str_tree->leaf_node_.blinded_member_secret_ = pending_blinded_secret;
+        std::unique_ptr<str_key_tree> str_tree = build_str_tree(CryptoPP::ModularExponentiation(pending_blinded_secret, previous_str_tree->root_node_.group_secret_, P),
+                                                                DEFAULT_VALUE,
+                                                                DEFAULT_VALUE,
+                                                                pending_blinded_secret);
 
         is_sponsor_ = false;
         std::unique_ptr<response_message> response = std::make_unique<response_message>();
