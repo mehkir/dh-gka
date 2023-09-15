@@ -1,10 +1,9 @@
-#ifndef STR_DH_MULTICAST_APPLICATION
-#define STR_DH_MULTICAST_APPLICATION
+#ifndef MULTICAST_APPLICATION
+#define MULTICAST_APPLICATION
 
 #include <cstddef>
 
-class multicast_application
-{
+class multicast_application {
 private:
 
 public:

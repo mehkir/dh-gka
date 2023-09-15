@@ -1,5 +1,5 @@
-#ifndef STR_DH_LOGGER
-#define STR_DH_LOGGER
+#ifndef LOGGER
+#define LOGGER
 
 #include <iostream>
 

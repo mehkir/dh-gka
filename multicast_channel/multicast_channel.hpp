@@ -1,5 +1,5 @@
-#ifndef STR_DH_MULTICAST_CHANNEL
-#define STR_DH_MULTICAST_CHANNEL
+#ifndef MULTICAST_CHANNEL
+#define MULTICAST_CHANNEL
 
 #include <string>
 #include <sstream>

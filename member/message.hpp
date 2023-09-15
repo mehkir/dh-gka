@@ -1,5 +1,5 @@
-#ifndef STR_DH_MESSAGE
-#define STR_DH_MESSAGE
+#ifndef MESSAGE
+#define MESSAGE
 
 #include "primitives.hpp"
 #include <vector>

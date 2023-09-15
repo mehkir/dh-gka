@@ -5,7 +5,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-member::member(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), keys_computed_count_(0) {
+member::member(bool _is_sponsor, service_id_t _service_id, std::unique_ptr<key_agreement_protocol> _key_agreement_protocol) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), keys_computed_count_(0), key_agreement_protocol_(_key_agreement_protocol) {
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
@@ -81,7 +81,9 @@ message_id_t member::extract_message_id(boost::asio::streambuf& buffer) {
 void member::process_find(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     find_message rcvd_find_message;
     rcvd_find_message.deserialize_(buffer);
+    key_agreement_protocol_->process_find(rcvd_find_message, _remote_endpoint);
 
+    // Needs to be moved from here:
     if (is_sponsor_ && service_of_interest_ == rcvd_find_message.required_service_) {
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
@@ -92,7 +94,9 @@ void member::process_find(boost::asio::streambuf& buffer, boost::asio::ip::udp::
 void member::process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     offer_message rcvd_offer_message;
     rcvd_offer_message.deserialize_(buffer);
+    key_agreement_protocol_->process_offer(rcvd_offer_message, _remote_endpoint);
 
+    // Needs to be moved from here:
     if (member_id_ == DEFAULT_MEMBER_ID && rcvd_offer_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
         request->blinded_secret_int_ = blinded_secret_int_;
@@ -104,6 +108,9 @@ void member::process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp:
 void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     request_message rcvd_request_message;
     rcvd_request_message.deserialize_(buffer);
+    key_agreement_protocol_->process_request(rcvd_request_message, _remote_endpoint);
+
+    // Needs to be moved from here:
     if (!assigned_member_endpoint_map_[rcvd_request_message.required_service_].contains(_remote_endpoint)
         && !pending_requests_[rcvd_request_message.required_service_].contains(_remote_endpoint)) {
         pending_requests_[rcvd_request_message.required_service_][_remote_endpoint] = rcvd_request_message.blinded_secret_int_;
@@ -118,7 +125,9 @@ void member::process_request(boost::asio::streambuf& buffer, boost::asio::ip::ud
 void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     response_message rcvd_response_message;
     rcvd_response_message.deserialize_(buffer);
+    key_agreement_protocol_->(rcvd_response_message, _remote_endpoint);
 
+    // Needs to be moved from here:
     boost::asio::ip::udp::endpoint new_sponsor_endpoint(rcvd_response_message.new_sponsor.ip_address_, rcvd_response_message.new_sponsor.port_);
     // Add new assigned sponsor
     if (new_sponsor_endpoint != get_local_endpoint() && !assigned_member_endpoint_map_[rcvd_response_message.offered_service_].contains(new_sponsor_endpoint)) {
@@ -180,6 +189,7 @@ void member::process_response(boost::asio::streambuf& buffer, boost::asio::ip::u
     }
 }
 
+// Method needs to be moved
 void member::process_pending_request() {
     if (!is_sponsor_) {
         return;

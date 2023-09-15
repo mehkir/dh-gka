@@ -1,5 +1,5 @@
-#ifndef STR_DH_MULTICAST_APPLICATION_IMPL
-#define STR_DH_MULTICAST_APPLICATION_IMPL
+#ifndef MULTICAST_APPLICATION_IMPL
+#define MULTICAST_APPLICATION_IMPL
 
 #include <memory>
 #include "multicast_channel.hpp"

@@ -1,10 +1,10 @@
-#ifndef STR_DH_MEMBER
-#define STR_DH_MEMBER
+#ifndef MEMBER
+#define MEMBER
 
 #include "multicast_application_impl.hpp"
 #include "str_key_tree.hpp"
 #include "primitives.hpp"
-#include "message.hpp"
+#include "key_agreement_protocol.hpp"
 #include <cryptopp/dh.h>
 #include <cryptopp/osrng.h>
 #include <unordered_map>
@@ -37,9 +37,10 @@ private:
 
     service_id_t service_of_interest_ = DEFAULT_VALUE;
     member_id_t member_id_ = DEFAULT_MEMBER_ID;
+    std::unique_ptr<key_agreement_protocol> key_agreement_protocol_;
 // Methods
 public:
-    member(bool _is_sponsor, service_id_t _service_id);
+    member(bool _is_sponsor, service_id_t _service_id, std::unique_ptr<key_agreement_protocol> _key_agreement_protocol);
     ~member();
     virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     void send(message& _message);
