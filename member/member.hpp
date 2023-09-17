@@ -7,40 +7,19 @@
 #include "key_agreement_protocol.hpp"
 #include <cryptopp/dh.h>
 #include <cryptopp/osrng.h>
-#include <unordered_map>
+
 #include <set>
 #include <tuple>
 #include <mutex>
 
-#define DEFAULT_MEMBER_ID -1
-#define DEFAULT_VALUE -1
-
-typedef CryptoPP::Integer blinded_secret_int_t;
-typedef CryptoPP::Integer secret_int_t;
-
 class member : public multicast_application_impl {
 // Variables
 private:
-    bool is_sponsor_;
-    int keys_computed_count_;
-    CryptoPP::DH diffie_hellman_;
-    CryptoPP::AutoSeededRandomPool rnd_;
-    CryptoPP::SecByteBlock secret_;
-    CryptoPP::SecByteBlock blinded_secret_;
-    CryptoPP::Integer secret_int_;
-    CryptoPP::Integer blinded_secret_int_;
-    std::unordered_map<service_id_t, std::unique_ptr<str_key_tree>> str_key_tree_map_;
-    std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint, blinded_secret_int_t>> pending_requests_;
-    std::unordered_map<service_id_t, std::unordered_map<member_id_t,blinded_secret_int_t>> assigned_member_key_map_;
-    std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint,member_id_t>> assigned_member_endpoint_map_;
     std::mutex receive_mutex_;
-
-    service_id_t service_of_interest_ = DEFAULT_VALUE;
-    member_id_t member_id_ = DEFAULT_MEMBER_ID;
     std::unique_ptr<key_agreement_protocol> key_agreement_protocol_;
 // Methods
 public:
-    member(bool _is_sponsor, service_id_t _service_id, std::unique_ptr<key_agreement_protocol> _key_agreement_protocol);
+    member(std::unique_ptr<key_agreement_protocol> _key_agreement_protocol);
     ~member();
     virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     void send(message& _message);
@@ -51,11 +30,6 @@ private:
     void process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
-    void process_pending_request();
-    blinded_secret_int_t get_next_blinded_key();
-    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> get_unassigned_member();
-    std::unique_ptr<str_key_tree> build_str_tree(CryptoPP::Integer _group_secret, CryptoPP::Integer _blinded_group_secret,
-                                                 CryptoPP::Integer _member_secret, CryptoPP::Integer _blinded_member_secret);
 };
 
 #endif
