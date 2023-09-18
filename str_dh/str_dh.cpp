@@ -1,4 +1,7 @@
 #include "str_dh.hpp"
+#include <cryptopp/nbtheory.h>
+
+#define UNINITIALIZED_ADDRESS "0.0.0.0"
 
 str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) {
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
@@ -34,16 +37,16 @@ str_dh::~str_dh() {
 
 }
 
-void str_dh::process_find(find_message _find_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (is_sponsor_ && service_of_interest_ == rcvd_find_message.required_service_) {
+void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (is_sponsor_ && service_of_interest_ == _rcvd_find_message.required_service_) {
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
         send_callback_(offer.operator*());
     }
 }
 
-void str_dh::process_offer(offer_message _offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (member_id_ == DEFAULT_MEMBER_ID && rcvd_offer_message.offered_service_ == service_of_interest_) {
+void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (member_id_ == DEFAULT_MEMBER_ID && _rcvd_offer_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
         request->blinded_secret_int_ = blinded_secret_int_;
         request->required_service_ = service_of_interest_;
@@ -51,10 +54,10 @@ void str_dh::process_offer(offer_message _offer_message, boost::asio::ip::udp::e
     }
 }
 
-void str_dh::process_request(request_message _request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (!assigned_member_endpoint_map_[rcvd_request_message.required_service_].contains(_remote_endpoint)
-        && !pending_requests_[rcvd_request_message.required_service_].contains(_remote_endpoint)) {
-        pending_requests_[rcvd_request_message.required_service_][_remote_endpoint] = rcvd_request_message.blinded_secret_int_;
+void str_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (!assigned_member_endpoint_map_[_rcvd_request_message.required_service_].contains(_remote_endpoint)
+        && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
+        pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_int_;
     }
     process_pending_request();
     
@@ -63,34 +66,34 @@ void str_dh::process_request(request_message _request_message, boost::asio::ip::
     }
 }
 
-void str_dh::process_response(response_message _response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    boost::asio::ip::udp::endpoint new_sponsor_endpoint(rcvd_response_message.new_sponsor.ip_address_, rcvd_response_message.new_sponsor.port_);
+void str_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    boost::asio::ip::udp::endpoint new_sponsor_endpoint(_rcvd_response_message.new_sponsor.ip_address_, _rcvd_response_message.new_sponsor.port_);
     // Add new assigned sponsor
-    if (new_sponsor_endpoint != get_local_endpoint() && !assigned_member_endpoint_map_[rcvd_response_message.offered_service_].contains(new_sponsor_endpoint)) {
-        assigned_member_key_map_[rcvd_response_message.offered_service_][rcvd_response_message.new_sponsor.assigned_id_] = rcvd_response_message.new_sponsor.blinded_secret_int_;
-        assigned_member_endpoint_map_[rcvd_response_message.offered_service_][new_sponsor_endpoint] = rcvd_response_message.new_sponsor.assigned_id_;
+    if (new_sponsor_endpoint != local_endpoint_ && !assigned_member_endpoint_map_[_rcvd_response_message.offered_service_].contains(new_sponsor_endpoint)) {
+        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_] = _rcvd_response_message.new_sponsor.blinded_secret_int_;
+        assigned_member_endpoint_map_[_rcvd_response_message.offered_service_][new_sponsor_endpoint] = _rcvd_response_message.new_sponsor.assigned_id_;
     }
     // Add old assigned sponsor
-    if (!assigned_member_endpoint_map_[rcvd_response_message.offered_service_].contains(_remote_endpoint)) {
-        assigned_member_key_map_[rcvd_response_message.offered_service_][rcvd_response_message.new_sponsor.assigned_id_-1] = rcvd_response_message.blinded_sponsor_secret_int_;
-        assigned_member_endpoint_map_[rcvd_response_message.offered_service_][_remote_endpoint] = rcvd_response_message.new_sponsor.assigned_id_-1;
+    if (!assigned_member_endpoint_map_[_rcvd_response_message.offered_service_].contains(_remote_endpoint)) {
+        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_-1] = _rcvd_response_message.blinded_sponsor_secret_int_;
+        assigned_member_endpoint_map_[_rcvd_response_message.offered_service_][_remote_endpoint] = _rcvd_response_message.new_sponsor.assigned_id_-1;
     }
-    pending_requests_[rcvd_response_message.offered_service_].erase(new_sponsor_endpoint);
-    pending_requests_[rcvd_response_message.offered_service_].erase(_remote_endpoint);
+    pending_requests_[_rcvd_response_message.offered_service_].erase(new_sponsor_endpoint);
+    pending_requests_[_rcvd_response_message.offered_service_].erase(_remote_endpoint);
 
-    bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
-    if (become_sponsor && member_id_ == DEFAULT_MEMBER_ID && rcvd_response_message.offered_service_ == service_of_interest_) {
+    bool become_sponsor = local_endpoint_ == new_sponsor_endpoint;
+    if (become_sponsor && member_id_ == DEFAULT_MEMBER_ID && _rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
-        member_id_ = rcvd_response_message.new_sponsor.assigned_id_;
-        secret_int_t group_secret = CryptoPP::ModularExponentiation(rcvd_response_message.blinded_group_secret_int_, secret_int_, P);
+        member_id_ = _rcvd_response_message.new_sponsor.assigned_id_;
+        secret_int_t group_secret = CryptoPP::ModularExponentiation(_rcvd_response_message.blinded_group_secret_int_, secret_int_, P);
         std::unique_ptr<str_key_tree> str_tree = build_str_tree(group_secret,
                                                                 CryptoPP::ModularExponentiation(G, group_secret, P),
                                                                 secret_int_,
                                                                 blinded_secret_int_);
         std::unique_ptr<str_key_tree> previous_str_tree = build_str_tree(DEFAULT_VALUE,
-                                                                        rcvd_response_message.blinded_sponsor_secret_int_,
+                                                                        _rcvd_response_message.blinded_sponsor_secret_int_,
                                                                         DEFAULT_VALUE,
-                                                                        rcvd_response_message.blinded_group_secret_int_);
+                                                                        _rcvd_response_message.blinded_group_secret_int_);
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
@@ -99,8 +102,8 @@ void str_dh::process_response(response_message _response_message, boost::asio::i
     }
 
     if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID
-        && (keys_computed_count_ + member_id_) == rcvd_response_message.new_sponsor.assigned_id_
-        && rcvd_response_message.offered_service_ == service_of_interest_) {
+        && (keys_computed_count_ + member_id_) == _rcvd_response_message.new_sponsor.assigned_id_
+        && _rcvd_response_message.offered_service_ == service_of_interest_) {
 
         blinded_secret_int_t next_blinded_key;
         while ((next_blinded_key = get_next_blinded_key()) != 0) {
@@ -166,7 +169,7 @@ void str_dh::process_pending_request() {
 
         keys_computed_count_++;
         LOG_DEBUG("(process_pending_request) Compute group key with blinded secret from IP=" << pending_remote_endpoint.address().to_string() << ", Port=" << pending_remote_endpoint.port() << ", keys_computed=" << keys_computed_count_)
-        send(response.operator*());
+        send_callback_(response.operator*());
     } else {
         LOG_DEBUG("Send offer (not implemented yet)")
     }

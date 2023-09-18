@@ -1,7 +1,6 @@
 #ifndef MESSAGE
 #define MESSAGE
 
-#include "primitives.hpp"
 #include <vector>
 #include <sstream>
 #include <boost/asio.hpp>
@@ -14,6 +13,7 @@
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/algorithm/string.hpp>
+#include "primitives.hpp"
 #include "logger.hpp"
 
 #define LAST_IP_FIELD_IDX 3

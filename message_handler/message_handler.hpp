@@ -1,26 +1,19 @@
-#ifndef MEMBER
-#define MEMBER
+#ifndef MESSAGE_HANDLER
+#define MESSAGE_HANDLER
 
 #include "multicast_application_impl.hpp"
-#include "str_key_tree.hpp"
-#include "primitives.hpp"
 #include "key_agreement_protocol.hpp"
-#include <cryptopp/dh.h>
-#include <cryptopp/osrng.h>
-
-#include <set>
-#include <tuple>
 #include <mutex>
 
-class member : public multicast_application_impl {
+class message_handler : public multicast_application_impl {
 // Variables
 private:
     std::mutex receive_mutex_;
     std::unique_ptr<key_agreement_protocol> key_agreement_protocol_;
 // Methods
 public:
-    member(std::unique_ptr<key_agreement_protocol> _key_agreement_protocol);
-    ~member();
+    message_handler(std::unique_ptr<key_agreement_protocol> _key_agreement_protocol);
+    ~message_handler();
     virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     void send(message& _message);
     void start();

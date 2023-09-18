@@ -83,11 +83,11 @@
             "preLaunchTask": "CMake: build"
         },
         {
-            "name": "(gdb) Launch member-example (recv)",
+            "name": "(gdb) Launch str-dh-example (recv)",
             "type": "cppdbg",
             "request": "launch",
             // Resolved by CMake Tools:
-            "program": "${workspaceFolder}/build/member-example",
+            "program": "${workspaceFolder}/build/str-dh-example",
             "args": ["false","42"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -110,11 +110,11 @@
             "preLaunchTask": "CMake: build"
         },
         {
-            "name": "(gdb) Launch member-example (send)",
+            "name": "(gdb) Launch str-dh-example (send)",
             "type": "cppdbg",
             "request": "launch",
             // Resolved by CMake Tools:
-            "program": "${workspaceFolder}/build/member-example",
+            "program": "${workspaceFolder}/build/str-dh-example",
             "args": ["true","42"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

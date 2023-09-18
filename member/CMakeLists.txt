@@ -1,5 +1,0 @@
-file(GLOB MY_SOURCES "./*.cpp")
-file(GLOB MY_HEADERS "./*.hpp")
-add_library(member_lib ${MY_SOURCES} ${MY_HEADERS})
-target_include_directories(member_lib PUBLIC ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel ${PROJECT_SOURCE_DIR}/key_aggreement_protocol)
-target_link_libraries(member_lib cryptopp crypto boost_serialization boost_system)

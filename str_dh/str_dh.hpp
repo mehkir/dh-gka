@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <set>
 #include <tuple>
+#include "MODP2048_256sg.hpp"
 
 #define DEFAULT_MEMBER_ID -1
 #define DEFAULT_VALUE -1
@@ -41,10 +42,10 @@ class str_dh : public key_agreement_protocol {
     public:
         str_dh(bool _is_sponsor, service_id_t _service_id);
         ~str_dh();
-        virtual void process_find(find_message _find_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
-        virtual void process_offer(offer_message _offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
-        virtual void process_request(request_message _request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
-        virtual void process_response(response_message _response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     protected:
     private:
         void process_pending_request();
@@ -52,6 +53,6 @@ class str_dh : public key_agreement_protocol {
         std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> get_unassigned_member();
         std::unique_ptr<str_key_tree> build_str_tree(CryptoPP::Integer _group_secret, CryptoPP::Integer _blinded_group_secret,
                                                  CryptoPP::Integer _member_secret, CryptoPP::Integer _blinded_member_secret);
-}
+};
 
 #endif

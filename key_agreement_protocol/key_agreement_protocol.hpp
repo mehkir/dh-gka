@@ -8,10 +8,10 @@ private:
 
 public:
     virtual ~key_agreement_protocol() {}
-    virtual void process_find(find_message _find_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
-    virtual void process_offer(offer_message _offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
-    virtual void process_request(request_message _request_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
-    virtual void process_response(response_message _response_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
+    virtual void process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
+    virtual void process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
+    virtual void process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
+    virtual void process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) = 0;
 };
 
 #endif

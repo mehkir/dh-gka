@@ -1,5 +1,5 @@
 file(GLOB MY_SOURCES "./*.cpp")
 file(GLOB MY_HEADERS "./*.hpp")
 add_library(str_dh_lib ${MY_SOURCES} ${MY_HEADERS})
-target_include_directories(str_dh_lib PUBLIC ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel ${PROJECT_SOURCE_DIR}/key_aggreement_protocol)
+target_include_directories(str_dh_lib PUBLIC ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel ${PROJECT_SOURCE_DIR}/key_agreement_protocol ${PROJECT_SOURCE_DIR}/message_handler ${PROJECT_SOURCE_DIR}/type_definitions ${PROJECT_SOURCE_DIR}/dh_parameters)
 target_link_libraries(str_dh_lib mclib cryptopp crypto boost_serialization boost_system)
