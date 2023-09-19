@@ -1,7 +1,7 @@
 #ifndef KEY_AGREEMENT_PROTOCOL
 #define KEY_AGREEMENT_PROTOCOL
 
-#include "message.hpp"
+#include "../message_handler/message.hpp"
 
 class key_agreement_protocol {
 private:

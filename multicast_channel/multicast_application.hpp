@@ -2,6 +2,7 @@
 #define MULTICAST_APPLICATION
 
 #include <cstddef>
+#include <boost/asio.hpp>
 
 class multicast_application {
 private:

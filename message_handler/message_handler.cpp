@@ -1,20 +1,14 @@
 #include "message_handler.hpp"
 #include "logger.hpp"
 
-using namespace boost::placeholders;
-
-message_handler::message_handler(std::unique_ptr<key_agreement_protocol> _key_agreement_protocol) : key_agreement_protocol_(_key_agreement_protocol) {
-
-    boost::function<void(message)> send_callback_ = boost::bind(&message_handler::send, this, _1);
-    LOG_DEBUG("[<message_handler>]: initialization complete, IP=" << get_local_endpoint().address().to_string() << " Port=" << get_local_endpoint().port())
+message_handler::message_handler(key_agreement_protocol* _key_agreement_protocol) : key_agreement_protocol_(_key_agreement_protocol) {
 }
 
 message_handler::~message_handler() {
     LOG_DEBUG("[<message_handler>]: destruction complete")
 }
 
-void message_handler::received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    std::lock_guard<std::mutex> lock_receive(receive_mutex_);
+void message_handler::deserialize_and_callback(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
     boost::asio::streambuf buffer;
     write_to_streambuf(buffer, reinterpret_cast<const char*>(_data), _bytes_recvd);
     switch (extract_message_id(buffer))
@@ -72,16 +66,10 @@ void message_handler::process_request(boost::asio::streambuf& buffer, boost::asi
 void message_handler::process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     response_message rcvd_response_message;
     rcvd_response_message.deserialize_(buffer);
-    key_agreement_protocol_->(rcvd_response_message, _remote_endpoint);
+    key_agreement_protocol_->process_response(rcvd_response_message, _remote_endpoint);
 }
 
-void message_handler::send(message& _message) {
-    boost::asio::streambuf buffer;
-    write_to_streambuf(buffer, reinterpret_cast<const char*>(&_message.message_type_), MESSAGE_ID_SIZE);
-    _message.serialize_(buffer);
-    multicast_application_impl::send(buffer);
-}
-
-void message_handler::start() {
-    multicast_application_impl::start();
+void message_handler::serialize(message& _message, boost::asio::streambuf& _buffer) {
+    write_to_streambuf(_buffer, reinterpret_cast<const char*>(&_message.message_type_), MESSAGE_ID_SIZE);
+    _message.serialize_(_buffer);
 }

@@ -1,11 +1,12 @@
 #ifndef MULTICAST_CHANNEL
 #define MULTICAST_CHANNEL
 
+#include "multicast_application.hpp"
+
 #include <string>
 #include <sstream>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-#include "multicast_application.hpp"
 
 class multicast_channel
 {

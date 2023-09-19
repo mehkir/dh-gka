@@ -1,5 +1,6 @@
 #include <boost/algorithm/string.hpp>
 #include "logger.hpp"
+#include "str_dh.hpp"
 
 int main(int argc, char* argv[]) {
   try
