@@ -24,8 +24,8 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
-    //member _member(boost::iequals(is_sponsor, "true"), service_id);
-    //_member.start();
+    str_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+    _member.start();
   }
   catch (std::exception& e)
   {

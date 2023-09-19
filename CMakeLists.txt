@@ -18,4 +18,4 @@ add_executable(str-dh-example str-dh-example.cpp)
 target_include_directories(str-dh-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/str_dh)
 target_link_libraries(str-dh-example PUBLIC str_dh_lib)
 # ------------------------------------------------ #
-#add_executable(testframe testframe.cpp)
+add_executable(testframe testframe.cpp)

@@ -4,7 +4,6 @@
 #include "key_agreement_protocol.hpp"
 #include "str_key_tree.hpp"
 #include "primitives.hpp"
-#include "MODP2048_256sg.hpp"
 #include "message_handler.hpp"
 #include "multicast_application_impl.hpp"
 

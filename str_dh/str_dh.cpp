@@ -1,4 +1,5 @@
 #include "str_dh.hpp"
+#include "MODP2048_256sg.hpp"
 
 #include <cryptopp/nbtheory.h>
 
