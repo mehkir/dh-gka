@@ -83,11 +83,11 @@
             "preLaunchTask": "CMake: build"
         },
         {
-            "name": "(gdb) Launch str-dh-example (recv)",
+            "name": "(gdb) Launch multicast-dh-example (recv)",
             "type": "cppdbg",
             "request": "launch",
             // Resolved by CMake Tools:
-            "program": "${workspaceFolder}/build/str-dh-example",
+            "program": "${workspaceFolder}/build/multicast-dh-example",
             "args": ["false","42"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -110,11 +110,11 @@
             "preLaunchTask": "CMake: build"
         },
         {
-            "name": "(gdb) Launch str-dh-example (send)",
+            "name": "(gdb) Launch multicast-dh-example (send)",
             "type": "cppdbg",
             "request": "launch",
             // Resolved by CMake Tools:
-            "program": "${workspaceFolder}/build/str-dh-example",
+            "program": "${workspaceFolder}/build/multicast-dh-example",
             "args": ["true","42"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

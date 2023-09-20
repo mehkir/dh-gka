@@ -14,8 +14,8 @@ add_executable(multicast-app-example multicast-app-example.cpp)
 target_link_libraries(multicast-app-example PUBLIC multicast_channel_lib)
 target_include_directories(multicast-app-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/multicast_channel)
 # ------------------------------------------------ #
-add_executable(str-dh-example str-dh-example.cpp)
-target_include_directories(str-dh-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/str_dh)
-target_link_libraries(str-dh-example PUBLIC str_dh_lib)
+add_executable(multicast-dh-example multicast-dh-example.cpp)
+target_include_directories(multicast-dh-example PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/str_dh)
+target_link_libraries(multicast-dh-example PUBLIC str_dh_lib)
 # ------------------------------------------------ #
 add_executable(testframe testframe.cpp)
