@@ -61,6 +61,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send(message& _message);
         bool is_assigned();
         bool all_predecessors_known();
+        std::string short_secret_repr(secret_int_t _secret);
 };
 
 #endif

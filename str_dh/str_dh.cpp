@@ -67,10 +67,6 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_int_;
     }
     process_pending_request();
-    
-    if (is_assigned()) {
-        LOG_DEBUG("[<member>]: assigned id=" << member_id_ << ", group secret=" << str_key_tree_map_[service_of_interest_]->root_node_.group_secret_ << " of service " << service_of_interest_ << ", keys_computed=" << keys_computed_count_)
-    }
 }
 
 void str_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -105,7 +101,8 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
         keys_computed_count_++;
-        LOG_DEBUG("(become_sponsor) Compute group key with blinded group secret from IP=" << _remote_endpoint.address().to_string() << ", Port=" << _remote_endpoint.port() << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
 
     if (!is_sponsor_ && is_assigned()
@@ -124,15 +121,12 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
             keys_computed_count_++;
-            LOG_DEBUG("(assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ + 1  << ", keys_computed=" << keys_computed_count_)
+            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ + 1  << ", keys_computed=" << keys_computed_count_)
+            LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
         }
     }
 
     process_pending_request();
-
-    if (is_assigned()) {
-        LOG_DEBUG("[<member>]: assigned id=" << member_id_ << ", group secret=" << str_key_tree_map_[service_of_interest_]->root_node_.group_secret_ << " of service " << service_of_interest_ << ", keys_computed=" << keys_computed_count_)
-    }
 }
 
 void str_dh::process_pending_request() {
@@ -174,7 +168,8 @@ void str_dh::process_pending_request() {
         assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
 
         keys_computed_count_++;
-        LOG_DEBUG("(process_pending_request) Compute group key with blinded secret from IP=" << pending_remote_endpoint.address().to_string() << ", Port=" << pending_remote_endpoint.port() << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
         send(response.operator*());
     } else {
         LOG_DEBUG("Send offer (not implemented yet)")
@@ -222,7 +217,16 @@ bool str_dh::is_assigned() {
 
 bool str_dh::all_predecessors_known() {
     return assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1;
- }
+}
+
+std::string str_dh::short_secret_repr(secret_int_t _secret) {
+    std::ostringstream oss;
+    oss << _secret;
+    std::string secret_string = oss.str();
+    oss.str("");
+    oss << secret_string.substr(0,3) << "..." << secret_string.substr(secret_string.length()-4,3);
+    return oss.str();
+}
 
 void str_dh::start() {
     multicast_application_impl::start();

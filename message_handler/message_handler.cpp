@@ -5,7 +5,7 @@ message_handler::message_handler(key_agreement_protocol* _key_agreement_protocol
 }
 
 message_handler::~message_handler() {
-    LOG_DEBUG("[<message_handler>]: destruction complete")
+
 }
 
 void message_handler::deserialize_and_callback(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -14,22 +14,22 @@ void message_handler::deserialize_and_callback(unsigned char* _data, size_t _byt
     switch (extract_message_id(buffer))
     {
     case message_type::FIND: {
-        LOG_DEBUG("[<message_handler>]: received data, FIND case")
+        // LOG_DEBUG("[<message_handler>]: received data, FIND case")
         process_find(buffer, _remote_endpoint);
     }
         break;
     case message_type::OFFER: {
-        LOG_DEBUG("[<message_handler>]: received data, OFFER case")
+        // LOG_DEBUG("[<message_handler>]: received data, OFFER case")
         process_offer(buffer, _remote_endpoint);
     }
         break;
     case message_type::REQUEST: {
-        LOG_DEBUG("[<message_handler>]: received data, REQUEST case")
+        // LOG_DEBUG("[<message_handler>]: received data, REQUEST case")
         process_request(buffer, _remote_endpoint);
     }
         break;
     case message_type::RESPONSE: {
-        LOG_DEBUG("[<message_handler>]: received data, RESPONSE case")
+        // LOG_DEBUG("[<message_handler>]: received data, RESPONSE case")
         process_response(buffer, _remote_endpoint);
     }
         break;
