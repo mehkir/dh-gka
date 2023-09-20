@@ -172,7 +172,6 @@ void str_dh::process_pending_request() {
 
         assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
         assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
-        //pending_requests_[service_of_interest_].erase(pending_remote_endpoint);
 
         keys_computed_count_++;
         LOG_DEBUG("(process_pending_request) Compute group key with blinded secret from IP=" << pending_remote_endpoint.address().to_string() << ", Port=" << pending_remote_endpoint.port() << ", keys_computed=" << keys_computed_count_)
