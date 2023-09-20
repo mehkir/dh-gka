@@ -53,7 +53,7 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (member_id_ == DEFAULT_MEMBER_ID && _rcvd_offer_message.offered_service_ == service_of_interest_) {
+    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
         request->blinded_secret_int_ = blinded_secret_int_;
         request->required_service_ = service_of_interest_;
@@ -68,7 +68,7 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
     }
     process_pending_request();
     
-    if (member_id_ != DEFAULT_MEMBER_ID) {
+    if (is_assigned()) {
         LOG_DEBUG("[<member>]: assigned id=" << member_id_ << ", group secret=" << str_key_tree_map_[service_of_interest_]->root_node_.group_secret_ << " of service " << service_of_interest_ << ", keys_computed=" << keys_computed_count_)
     }
 }
@@ -89,7 +89,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     pending_requests_[_rcvd_response_message.offered_service_].erase(_remote_endpoint);
 
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
-    if (become_sponsor && member_id_ == DEFAULT_MEMBER_ID && _rcvd_response_message.offered_service_ == service_of_interest_) {
+    if (become_sponsor && !is_assigned() && _rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
         member_id_ = _rcvd_response_message.new_sponsor.assigned_id_;
         secret_int_t group_secret = CryptoPP::ModularExponentiation(_rcvd_response_message.blinded_group_secret_int_, secret_int_, P);
@@ -108,7 +108,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         LOG_DEBUG("(become_sponsor) Compute group key with blinded group secret from IP=" << _remote_endpoint.address().to_string() << ", Port=" << _remote_endpoint.port() << ", keys_computed=" << keys_computed_count_)
     }
 
-    if (!is_sponsor_ && member_id_ != DEFAULT_MEMBER_ID
+    if (!is_sponsor_ && is_assigned()
         && (keys_computed_count_ + member_id_) == _rcvd_response_message.new_sponsor.assigned_id_
         && _rcvd_response_message.offered_service_ == service_of_interest_) {
 
@@ -130,7 +130,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 
     process_pending_request();
 
-    if (member_id_ != DEFAULT_MEMBER_ID) {
+    if (is_assigned()) {
         LOG_DEBUG("[<member>]: assigned id=" << member_id_ << ", group secret=" << str_key_tree_map_[service_of_interest_]->root_node_.group_secret_ << " of service " << service_of_interest_ << ", keys_computed=" << keys_computed_count_)
     }
 }
@@ -215,6 +215,10 @@ void str_dh::send(message& _message) {
     boost::asio::streambuf buffer;
     message_handler_->serialize(_message, buffer);
     multicast_application_impl::send(buffer);
+}
+
+bool str_dh::is_assigned() {
+    return member_id_ != DEFAULT_MEMBER_ID;
 }
 
 void str_dh::start() {

@@ -59,6 +59,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<str_key_tree> build_str_tree(CryptoPP::Integer _group_secret, CryptoPP::Integer _blinded_group_secret,
                                                  CryptoPP::Integer _member_secret, CryptoPP::Integer _blinded_member_secret);
         void send(message& _message);
+        bool is_assigned();
 };
 
 #endif
