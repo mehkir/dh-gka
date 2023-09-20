@@ -4,8 +4,9 @@ project(multicast)
 set(CMAKE_CXX_STANDARD 26)
 
 add_subdirectory(multicast_channel)
-add_subdirectory(str_dh)
 add_subdirectory(message_handler)
+add_subdirectory(str_dh)
+add_subdirectory(tg_dh)
 
 add_executable(sender sender.cpp)
 add_executable(receiver receiver.cpp)
