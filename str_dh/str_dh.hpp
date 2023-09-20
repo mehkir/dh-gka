@@ -60,6 +60,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
                                                  CryptoPP::Integer _member_secret, CryptoPP::Integer _blinded_member_secret);
         void send(message& _message);
         bool is_assigned();
+        bool all_predecessors_known();
 };
 
 #endif

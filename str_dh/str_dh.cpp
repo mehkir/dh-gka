@@ -140,7 +140,7 @@ void str_dh::process_pending_request() {
         return;
     }
 
-    if (assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1) { // all_predecessors_known?
+    if (all_predecessors_known()) {
         LOG_DEBUG("Request synch (not implemented yet)")
         return;
     }
@@ -219,6 +219,10 @@ void str_dh::send(message& _message) {
 bool str_dh::is_assigned() {
     return member_id_ != DEFAULT_MEMBER_ID;
 }
+
+bool str_dh::all_predecessors_known() {
+    return assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1;
+ }
 
 void str_dh::start() {
     multicast_application_impl::start();
