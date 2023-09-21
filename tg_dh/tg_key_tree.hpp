@@ -9,6 +9,8 @@ struct tg_key_node {
     CryptoPP::Integer blinded_member_secret_;
     std::unique_ptr<tg_key_node> left_node_;
     std::unique_ptr<tg_key_node> right_node_;
+    int right_height_;
+    int left_height_;
 };
 
 struct tg_key_tree {
