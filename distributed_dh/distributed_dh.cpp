@@ -2,21 +2,24 @@
 #include "MODP2048_256sg.hpp"
 
 #include <cryptopp/nbtheory.h>
+#include <cryptopp/modes.h>
 
 distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)) {
-    diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
-    group_secret_.New(diffie_hellman_.PrivateKeyLength());    
+    diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);    
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
-    diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_);
     diffie_hellman_.GeneratePrivateKey(rnd_, secret_);
     diffie_hellman_.GeneratePublicKey(rnd_, secret_, blinded_secret_);
-    group_secret_int_.Decode(group_secret_.BytePtr(), group_secret_.SizeInBytes());
     secret_int_.Decode(secret_.BytePtr(), secret_.SizeInBytes());
     blinded_secret_int_.Decode(blinded_secret_.BytePtr(), blinded_secret_.SizeInBytes());
 
     if (is_sponsor_) {
         member_id_ = 1;
+        group_secret_.New(diffie_hellman_.PrivateKeyLength());
+        diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_);
+        group_secret_int_.Decode(group_secret_.BytePtr(), group_secret_.SizeInBytes());
+
+        LOG_DEBUG("[<distributed_dh>]: generated group secret " << group_secret_int_)
 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
@@ -59,15 +62,54 @@ void distributed_dh::process_offer(offer_message _rcvd_offer_message, boost::asi
 }
 
 void distributed_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    secret_int_t shared_secret_int =  CryptoPP::ModularExponentiation(_rcvd_request_message.blinded_secret_int_, secret_int_, P);
-    CryptoPP::SecByteBlock shared_secret
+    secret_int_t shared_secret_int = CryptoPP::ModularExponentiation(_rcvd_request_message.blinded_secret_int_, secret_int_, P);
+    CryptoPP::SecByteBlock shared_secret;
+    shared_secret_int.Encode(shared_secret, shared_secret_int.MinEncodedSize());
 
-    shared_secret_int.Encode()
+    // Calculate a SHA-256 hash over the Diffie-Hellman session key
+    CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
+    CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.size()); 
+    // Generate a random IV
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
+    rnd_.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
+    std::vector<unsigned char> iv_vector(iv, iv + CryptoPP::AES::BLOCKSIZE);
 
+    CryptoPP::SecByteBlock encrypted_group_key;
+    encrypted_group_key.New(group_secret_.SizeInBytes());
+
+    // Encrypt
+    CryptoPP::CFB_Mode<CryptoPP::AES>::Encryption cfbEncryption(key, CryptoPP::SHA256::DIGESTSIZE, iv);
+    cfbEncryption.ProcessData(encrypted_group_key.BytePtr(), group_secret_.BytePtr(), group_secret_.SizeInBytes());
+
+    std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>();
+    distributed_response->offered_service_ = service_of_interest_;
+    distributed_response->blinded_sponsor_secret_int_ = blinded_secret_int_;
+    distributed_response->encrypted_group_secret_ = encrypted_group_key;
+    distributed_response->initialization_vector_ = iv_vector;
+    send_to(distributed_response.operator*(), _remote_endpoint);
 }
 
 void distributed_dh::process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    CryptoPP::SecByteBlock encrypted_group_secret_ = _rcvd_distributed_response_message.encrypted_group_secret_;
+    secret_int_t shared_secret_int = CryptoPP::ModularExponentiation(_rcvd_distributed_response_message.blinded_sponsor_secret_int_, secret_int_, P);
+    CryptoPP::SecByteBlock shared_secret;
+    shared_secret_int.Encode(shared_secret, shared_secret_int.MinEncodedSize());
 
+    // Calculate a SHA-256 hash over the Diffie-Hellman session key
+    CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
+    CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.size()); 
+
+    CryptoPP::SecByteBlock decrypted_group_key;
+    decrypted_group_key.New(encrypted_group_secret_.SizeInBytes());
+
+    // Decrypt
+    CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption cfbDecryption(key, CryptoPP::SHA256::DIGESTSIZE, _rcvd_distributed_response_message.initialization_vector_.data());
+    cfbDecryption.ProcessData(decrypted_group_key.BytePtr(), encrypted_group_secret_.BytePtr(), encrypted_group_secret_.SizeInBytes());
+
+    group_secret_ = decrypted_group_key;
+    group_secret_int_.Decode(group_secret_.BytePtr(), group_secret_.SizeInBytes());
+
+    LOG_DEBUG("[<distributed_dh>]: received group secret " << group_secret_int_)
 }
 
 void distributed_dh::send_multicast(message& _message) {

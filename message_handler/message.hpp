@@ -28,6 +28,22 @@ enum message_type {
     DISTRIBUTED_RESPONSE
 };
 
+static std::vector<unsigned char> get_secbyteblock_as_byte_vector(CryptoPP::SecByteBlock _secbyteblock) {
+    std::vector<unsigned char> byte_vector;
+    CryptoPP::SecByteBlock::iterator iterator = _secbyteblock.BytePtr();
+    for (size_t i = 0; i < _secbyteblock.SizeInBytes(); i++) {
+        byte_vector.push_back(*iterator);
+        iterator++;
+    }
+    return byte_vector;
+}
+
+static CryptoPP::SecByteBlock get_byte_vector_as_secbyteblock(std::vector<unsigned char> _byte_vector) {
+    CryptoPP::SecByteBlock secbyteblock;
+    secbyteblock.Assign(_byte_vector.data(), _byte_vector.size());
+    return secbyteblock;
+}
+
 static std::vector<unsigned char> get_cryptopp_integer_as_byte_vector(CryptoPP::Integer _integer) {
     std::vector<unsigned char> byte_vector;
     for (size_t i = 0; i < _integer.ByteCount(); i++) {
@@ -262,16 +278,17 @@ struct distributed_response_message : offer_message {
             message_type_ = message_type::DISTRIBUTED_RESPONSE;
         }
         CryptoPP::Integer blinded_sponsor_secret_int_;
-        CryptoPP::Integer encrypted_group_secret_;
+        CryptoPP::SecByteBlock encrypted_group_secret_;
+        std::vector<unsigned char> initialization_vector_;
     protected:
         virtual void make_members_serializable() override {
             blinded_sponsor_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_sponsor_secret_int_);
-            encrypted_group_secret_bytes_ = get_cryptopp_integer_as_byte_vector(encrypted_group_secret_);
+            encrypted_group_secret_bytes_ = get_secbyteblock_as_byte_vector(encrypted_group_secret_);
         }
 
         virtual void deserialize_members() override {
             blinded_sponsor_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_sponsor_secret_int_bytes_);
-            encrypted_group_secret_ = get_byte_vector_as_cryptopp_integer(encrypted_group_secret_bytes_);
+            encrypted_group_secret_ = get_byte_vector_as_secbyteblock(encrypted_group_secret_bytes_);
         }
         
         virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
@@ -292,6 +309,7 @@ struct distributed_response_message : offer_message {
             ar & boost::serialization::base_object<offer_message>(*this);
             ar & blinded_sponsor_secret_int_bytes_;
             ar & encrypted_group_secret_bytes_;
+            ar & initialization_vector_;
         }
 };
 
