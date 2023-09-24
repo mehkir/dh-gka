@@ -21,6 +21,7 @@ private:
     void process_offer(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_distributed_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
 };
 
 #endif

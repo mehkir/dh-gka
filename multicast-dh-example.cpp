@@ -1,6 +1,7 @@
 #include <boost/algorithm/string.hpp>
 #include "logger.hpp"
 #include "str_dh.hpp"
+#include "distributed_dh.hpp"
 
 int main(int argc, char* argv[]) {
   try
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
-    str_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+    distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
     _member.start();
   }
   catch (std::exception& e)

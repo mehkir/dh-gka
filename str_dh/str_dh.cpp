@@ -231,3 +231,7 @@ std::string str_dh::short_secret_repr(secret_int_t _secret) {
 void str_dh::start() {
     multicast_application_impl::start();
 }
+
+void str_dh::process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}

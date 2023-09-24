@@ -24,7 +24,8 @@ enum message_type {
     FIND,
     OFFER,
     REQUEST,
-    RESPONSE
+    RESPONSE,
+    DISTRIBUTED_RESPONSE
 };
 
 static std::vector<unsigned char> get_cryptopp_integer_as_byte_vector(CryptoPP::Integer _integer) {
@@ -252,6 +253,45 @@ struct response_message : offer_message {
             ar & new_sponsor.port_;
             ar & new_sponsor.assigned_id_;
             ar & new_sponsor.blinded_secret_int_bytes_;
+        }
+};
+
+struct distributed_response_message : offer_message {
+    public:
+        distributed_response_message() {
+            message_type_ = message_type::DISTRIBUTED_RESPONSE;
+        }
+        CryptoPP::Integer blinded_sponsor_secret_int_;
+        CryptoPP::Integer encrypted_group_secret_;
+    protected:
+        virtual void make_members_serializable() override {
+            blinded_sponsor_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_sponsor_secret_int_);
+            encrypted_group_secret_bytes_ = get_cryptopp_integer_as_byte_vector(encrypted_group_secret_);
+        }
+
+        virtual void deserialize_members() override {
+            blinded_sponsor_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_sponsor_secret_int_bytes_);
+            encrypted_group_secret_ = get_byte_vector_as_cryptopp_integer(encrypted_group_secret_bytes_);
+        }
+        
+        virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
+            _oarchive << *this;
+        }
+
+        virtual void read_from_archive(boost::archive::binary_iarchive& _iarchive) override {
+            _iarchive >> *this;
+        }
+    private:
+        // Serializable members
+        std::vector<unsigned char> blinded_sponsor_secret_int_bytes_;
+        std::vector<unsigned char> encrypted_group_secret_bytes_;
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<offer_message>(*this);
+            ar & blinded_sponsor_secret_int_bytes_;
+            ar & encrypted_group_secret_bytes_;
         }
 };
 

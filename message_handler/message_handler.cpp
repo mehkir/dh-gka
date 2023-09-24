@@ -14,23 +14,23 @@ void message_handler::deserialize_and_callback(unsigned char* _data, size_t _byt
     switch (extract_message_id(buffer))
     {
     case message_type::FIND: {
-        // LOG_DEBUG("[<message_handler>]: received data, FIND case")
         process_find(buffer, _remote_endpoint);
     }
         break;
     case message_type::OFFER: {
-        // LOG_DEBUG("[<message_handler>]: received data, OFFER case")
         process_offer(buffer, _remote_endpoint);
     }
         break;
     case message_type::REQUEST: {
-        // LOG_DEBUG("[<message_handler>]: received data, REQUEST case")
         process_request(buffer, _remote_endpoint);
     }
         break;
     case message_type::RESPONSE: {
-        // LOG_DEBUG("[<message_handler>]: received data, RESPONSE case")
         process_response(buffer, _remote_endpoint);
+    }
+        break;
+    case message_type::DISTRIBUTED_RESPONSE: {
+        process_distributed_response(buffer, _remote_endpoint);
     }
         break;
     default:
@@ -67,6 +67,12 @@ void message_handler::process_response(boost::asio::streambuf& buffer, boost::as
     response_message rcvd_response_message;
     rcvd_response_message.deserialize_(buffer);
     key_agreement_protocol_->process_response(rcvd_response_message, _remote_endpoint);
+}
+
+void message_handler::process_distributed_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    distributed_response_message rcvd_distributed_response_message;
+    rcvd_distributed_response_message.deserialize_(buffer);
+    key_agreement_protocol_->process_distributed_response(rcvd_distributed_response_message, _remote_endpoint);
 }
 
 void message_handler::serialize(message& _message, boost::asio::streambuf& _buffer) {
