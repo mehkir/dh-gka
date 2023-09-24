@@ -17,6 +17,10 @@ void multicast_application_impl::send_multicast(boost::asio::streambuf& _buffer)
   multicast_channel_->send_multicast(_buffer);
 }
 
+void multicast_application_impl::send_to(boost::asio::streambuf& _buffer, boost::asio::ip::udp::endpoint _endpoint) {
+  multicast_channel_->send_to(_buffer, _endpoint);
+}
+
 void multicast_application_impl::start() {
   try {
     io_service_.run();

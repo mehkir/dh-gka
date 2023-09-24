@@ -36,6 +36,13 @@ void multicast_channel::send_multicast(boost::asio::streambuf& _buffer) {
         boost::asio::placeholders::error));
 }
 
+void multicast_channel::send_to(boost::asio::streambuf& _buffer, boost::asio::ip::udp::endpoint _endpoint) {
+    unicast_socket_.async_send_to(
+      _buffer.data(), _endpoint,
+      boost::bind(&multicast_channel::handle_send_to, this,
+        boost::asio::placeholders::error));
+}
+
 void multicast_channel::handle_send_to(const boost::system::error_code& _error) {
   if (_error) {
     std::cerr << _error.what() << std::endl;

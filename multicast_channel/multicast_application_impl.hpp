@@ -10,6 +10,7 @@ class multicast_application_impl : public multicast_application {
       ~multicast_application_impl();
     protected:
       void send_multicast(boost::asio::streambuf& _buffer);
+      void send_to(boost::asio::streambuf& _buffer, boost::asio::ip::udp::endpoint _endpoint);
       void start();
       boost::asio::ip::udp::endpoint get_local_endpoint() const;
     private:
