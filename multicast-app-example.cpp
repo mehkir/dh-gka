@@ -14,7 +14,7 @@ public:
     }
 
     void send(boost::asio::streambuf& buffer) {
-      multicast_application_impl::send(buffer);
+      multicast_application_impl::send_multicast(buffer);
     }
 
     void start() {
