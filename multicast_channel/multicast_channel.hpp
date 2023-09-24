@@ -37,7 +37,8 @@ public:
     const boost::asio::ip::address& _multicast_address,
     int _multicast_port, multicast_application& _mc_app);
   ~multicast_channel();
-  void send(boost::asio::streambuf& buffer);
+  void send_multicast(boost::asio::streambuf& _buffer);
+  void send_unicast(boost::asio::streambuf& _buffer, boost::asio::ip::udp::endpoint _endpoint);
   boost::asio::ip::udp::endpoint get_local_endpoint() const;
 };
 #endif

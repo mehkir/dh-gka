@@ -13,8 +13,8 @@ multicast_application_impl::~multicast_application_impl() {
 
 }
 
-void multicast_application_impl::send(boost::asio::streambuf& buffer) {
-  multicast_channel_->send(buffer);
+void multicast_application_impl::send_multicast(boost::asio::streambuf& _buffer) {
+  multicast_channel_->send_multicast(_buffer);
 }
 
 void multicast_application_impl::start() {

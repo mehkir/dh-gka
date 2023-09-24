@@ -29,9 +29,9 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
 multicast_channel::~multicast_channel() {
 }
 
-void multicast_channel::send(boost::asio::streambuf& buffer) {
+void multicast_channel::send_multicast(boost::asio::streambuf& _buffer) {
   unicast_socket_.async_send_to(
-      buffer.data(), multicast_endpoint_,
+      _buffer.data(), multicast_endpoint_,
       boost::bind(&multicast_channel::handle_send_to, this,
         boost::asio::placeholders::error));
 }

@@ -208,7 +208,7 @@ std::unique_ptr<str_key_tree> str_dh::build_str_tree(CryptoPP::Integer _group_se
 void str_dh::send(message& _message) {
     boost::asio::streambuf buffer;
     message_handler_->serialize(_message, buffer);
-    multicast_application_impl::send(buffer);
+    multicast_application_impl::send_multicast(buffer);
 }
 
 bool str_dh::is_assigned() {

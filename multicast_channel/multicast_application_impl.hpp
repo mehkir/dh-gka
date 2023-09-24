@@ -9,7 +9,7 @@ class multicast_application_impl : public multicast_application {
       multicast_application_impl();
       ~multicast_application_impl();
     protected:
-      void send(boost::asio::streambuf& buffer);
+      void send_multicast(boost::asio::streambuf& _buffer);
       void start();
       boost::asio::ip::udp::endpoint get_local_endpoint() const;
     private:

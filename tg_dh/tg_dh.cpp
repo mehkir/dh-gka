@@ -95,8 +95,8 @@ void tg_dh::process_response(response_message _rcvd_response_message, boost::asi
         // TODO
 
         keys_computed_count_++;
-        LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
-        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << 111 << " of service " << service_of_interest_)
+        LOG_DEBUG("[<tg_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<tg_dh>]: assigned id=" << member_id_ << ", group secret=" << 111 << " of service " << service_of_interest_)
     }
 
     if (!is_sponsor_ && is_assigned()
@@ -141,8 +141,8 @@ void tg_dh::process_pending_request() {
         assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
 
         keys_computed_count_++;
-        LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
-        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << 111 << " of service " << service_of_interest_)
+        LOG_DEBUG("[<tg_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        LOG_DEBUG("[<tg_dh>]: assigned id=" << member_id_ << ", group secret=" << 111 << " of service " << service_of_interest_)
         send(response.operator*());
     } else {
         LOG_DEBUG("Send offer (not implemented yet)")
@@ -152,7 +152,7 @@ void tg_dh::process_pending_request() {
 void tg_dh::send(message& _message) {
     boost::asio::streambuf buffer;
     message_handler_->serialize(_message, buffer);
-    multicast_application_impl::send(buffer);
+    multicast_application_impl::send_multicast(buffer);
 }
 
 bool tg_dh::is_assigned() {
