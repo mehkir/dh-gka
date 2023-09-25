@@ -94,9 +94,9 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
                                                                 secret_int_,
                                                                 blinded_secret_int_);
         std::unique_ptr<str_key_tree> previous_str_tree = build_str_tree(DEFAULT_VALUE,
-                                                                        _rcvd_response_message.blinded_sponsor_secret_int_,
+                                                                        _rcvd_response_message.blinded_group_secret_int_,
                                                                         DEFAULT_VALUE,
-                                                                        _rcvd_response_message.blinded_group_secret_int_);
+                                                                        _rcvd_response_message.blinded_sponsor_secret_int_);
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
