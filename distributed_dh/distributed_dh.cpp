@@ -19,7 +19,7 @@ distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id) : is_
         diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_);
         group_secret_int_.Decode(group_secret_.BytePtr(), group_secret_.SizeInBytes());
 
-        LOG_DEBUG("[<distributed_dh>]: generated group secret " << group_secret_int_)
+        LOG_DEBUG("[<distributed_dh>]: generated group secret " << short_secret_repr(group_secret_int_))
 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
@@ -109,7 +109,7 @@ void distributed_dh::process_distributed_response(distributed_response_message _
     group_secret_ = decrypted_group_key;
     group_secret_int_.Decode(group_secret_.BytePtr(), group_secret_.SizeInBytes());
 
-    LOG_DEBUG("[<distributed_dh>]: received group secret " << group_secret_int_)
+    LOG_DEBUG("[<distributed_dh>]: received group secret " << short_secret_repr(group_secret_int_))
 }
 
 void distributed_dh::send_multicast(message& _message) {
