@@ -120,9 +120,10 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
             str_tree->next_internal_node_ = std::move(previous_str_tree);
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-            keys_computed_count_++;
-            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ - 1  << ", keys_computed=" << keys_computed_count_)
+            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_)
             LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+
+            keys_computed_count_++;
         }
     }
 
