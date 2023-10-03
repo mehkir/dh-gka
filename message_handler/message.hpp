@@ -180,14 +180,14 @@ struct request_message : find_message {
         request_message() {
             message_type_ = message_type::REQUEST;
         }
-        CryptoPP::Integer blinded_secret_int_;
+        CryptoPP::SecByteBlock blinded_secret_;
     protected:
         virtual void make_members_serializable() override {
-            blinded_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_secret_int_);
+            blinded_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_secret_);
         }
         
         virtual void deserialize_members() override {
-            blinded_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_secret_int_bytes_);
+            blinded_secret_ = get_byte_vector_as_secbyteblock(blinded_secret_bytes_);
         }
 
         virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
@@ -199,13 +199,13 @@ struct request_message : find_message {
         }
     private:
         // Serializable members
-        std::vector<unsigned char> blinded_secret_int_bytes_;
+        std::vector<unsigned char> blinded_secret_bytes_;
         // Serialization
         friend class boost::serialization::access;
         template<class Archive>
         void serialize(Archive& ar, const unsigned int version) {
             ar & boost::serialization::base_object<find_message>(*this);
-            ar & blinded_secret_int_bytes_;
+            ar & blinded_secret_bytes_;
         }
 };
 
