@@ -59,7 +59,7 @@ void tg_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp::
 void tg_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
-        request->blinded_secret_int_ = blinded_secret_int_;
+        request->blinded_secret_ = blinded_secret_;
         request->required_service_ = service_of_interest_;
         send(request.operator*());
     }
@@ -68,7 +68,7 @@ void tg_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::ud
 void tg_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     if (!assigned_member_endpoint_map_[_rcvd_request_message.required_service_].contains(_remote_endpoint)
         && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
-        pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_int_;
+        pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
     }
     process_pending_request();
 }
@@ -77,12 +77,12 @@ void tg_dh::process_response(response_message _rcvd_response_message, boost::asi
     boost::asio::ip::udp::endpoint new_sponsor_endpoint(_rcvd_response_message.new_sponsor.ip_address_, _rcvd_response_message.new_sponsor.port_);
     // Add new assigned sponsor
     if (new_sponsor_endpoint != get_local_endpoint() && !assigned_member_endpoint_map_[_rcvd_response_message.offered_service_].contains(new_sponsor_endpoint)) {
-        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_] = _rcvd_response_message.new_sponsor.blinded_secret_int_;
+        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_] = _rcvd_response_message.new_sponsor.blinded_secret_;
         assigned_member_endpoint_map_[_rcvd_response_message.offered_service_][new_sponsor_endpoint] = _rcvd_response_message.new_sponsor.assigned_id_;
     }
     // Add old assigned sponsor
     if (!assigned_member_endpoint_map_[_rcvd_response_message.offered_service_].contains(_remote_endpoint)) {
-        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_-1] = _rcvd_response_message.blinded_sponsor_secret_int_;
+        assigned_member_key_map_[_rcvd_response_message.offered_service_][_rcvd_response_message.new_sponsor.assigned_id_-1] = _rcvd_response_message.blinded_sponsor_secret_;
         assigned_member_endpoint_map_[_rcvd_response_message.offered_service_][_remote_endpoint] = _rcvd_response_message.new_sponsor.assigned_id_-1;
     }
     pending_requests_[_rcvd_response_message.offered_service_].erase(new_sponsor_endpoint);
@@ -103,8 +103,8 @@ void tg_dh::process_response(response_message _rcvd_response_message, boost::asi
         && (keys_computed_count_ + member_id_) == _rcvd_response_message.new_sponsor.assigned_id_
         && _rcvd_response_message.offered_service_ == service_of_interest_) {
 
-        blinded_secret_int_t next_blinded_key;
-        while ((next_blinded_key = get_next_blinded_key()) != 0) {
+        blinded_secret_t next_blinded_key;
+        while ((next_blinded_key = get_next_blinded_key()).SizeInBytes() != 0) {
 
             // TODO
 
@@ -127,11 +127,11 @@ void tg_dh::process_pending_request() {
         return;
     }
 
-    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_int_t> unassigned_member = get_unassigned_member();
+    std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> unassigned_member = get_unassigned_member();
     boost::asio::ip::udp::endpoint pending_remote_endpoint = unassigned_member.first;
-    blinded_secret_int_t pending_blinded_secret = unassigned_member.second;
+    blinded_secret_t pending_blinded_secret = unassigned_member.second;
 
-    if (pending_remote_endpoint.address().to_string().compare(UNINITIALIZED_ADDRESS) != 0 && pending_blinded_secret != 0) {
+    if (pending_remote_endpoint.address().to_string().compare(UNINITIALIZED_ADDRESS) != 0 && pending_blinded_secret.SizeInBytes() != 0) {
 
         is_sponsor_ = false;
 
@@ -163,9 +163,11 @@ bool tg_dh::all_predecessors_known() {
     return assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1;
 }
 
-std::string tg_dh::short_secret_repr(secret_int_t _secret) {
+std::string tg_dh::short_secret_repr(secret_t _secret) {
+    CryptoPP::Integer secret_int;
+    secret_int.Decode(_secret.BytePtr(), _secret.SizeInBytes());
     std::ostringstream oss;
-    oss << _secret;
+    oss << secret_int;
     std::string secret_string = oss.str();
     oss.str("");
     oss << secret_string.substr(0,3) << "..." << secret_string.substr(secret_string.length()-4,3);

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include <unordered_map>
+#include <vector>
 #include <memory>
 
 int main () {
@@ -25,5 +26,14 @@ int main () {
     if (umap.contains(ep3)) {
         std::cout << "contains" << std::endl;
     }
+
+
+    char bytes[4] = {'A','B','C', 'D'};
+
+    std::vector<char> copybytes(bytes,bytes+4);
+    for (char c : copybytes) {
+        std::cout << c << std::endl;
+    }
+
     return 0;
 }

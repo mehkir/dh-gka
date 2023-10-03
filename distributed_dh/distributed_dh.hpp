@@ -7,35 +7,37 @@
 #include "multicast_application_impl.hpp"
 
 #include <cryptopp/dh.h>
+#include <cryptopp/eccrypto.h>
 #include <cryptopp/osrng.h>
 #include <unordered_map>
 #include <set>
 #include <tuple>
 
+#define ECC_DH
 #define DEFAULT_MEMBER_ID -1
 #define DEFAULT_VALUE -1
 
-typedef CryptoPP::Integer blinded_secret_int_t;
-typedef CryptoPP::Integer secret_int_t;
-typedef boost::function<void(message)> send_callback;
+typedef CryptoPP::SecByteBlock blinded_secret_t;
+typedef CryptoPP::SecByteBlock secret_t;
 
 class distributed_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
     public:
     protected:
     private:
+#ifndef ECC_DH
+        CryptoPP::DH diffie_hellman_;
+#else
+        CryptoPP::ECDH<CryptoPP::ECP>::Domain diffie_hellman_;
+#endif
         std::mutex receive_mutex_;
         service_id_t service_of_interest_ = DEFAULT_VALUE;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
-        CryptoPP::DH diffie_hellman_;
         CryptoPP::AutoSeededRandomPool rnd_;
-        CryptoPP::SecByteBlock group_secret_;
-        CryptoPP::SecByteBlock secret_;
-        CryptoPP::SecByteBlock blinded_secret_;
-        secret_int_t group_secret_int_;
-        secret_int_t secret_int_;
-        blinded_secret_int_t blinded_secret_int_;
+        secret_t group_secret_;
+        secret_t secret_;
+        blinded_secret_t blinded_secret_;
         std::unique_ptr<message_handler> message_handler_;
     // Methods
     public:
@@ -53,7 +55,7 @@ class distributed_dh : public key_agreement_protocol, public multicast_applicati
         bool is_assigned();
         void send_multicast(message& _message);
         void send_to(message& _message, boost::asio::ip::udp::endpoint _remote_endpoint);
-        std::string short_secret_repr(secret_int_t _secret);
+        std::string short_secret_repr(secret_t _secret);
 };
 
 #endif

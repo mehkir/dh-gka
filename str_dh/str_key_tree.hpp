@@ -5,13 +5,13 @@
 #include <memory>
 
 struct str_IN {
-    CryptoPP::Integer group_secret_;
-    CryptoPP::Integer blinded_group_secret_;
+    CryptoPP::SecByteBlock group_secret_;
+    CryptoPP::SecByteBlock blinded_group_secret_;
 };
 
 struct str_LN {
-    CryptoPP::Integer member_secret_;
-    CryptoPP::Integer blinded_member_secret_;
+    CryptoPP::SecByteBlock member_secret_;
+    CryptoPP::SecByteBlock blinded_member_secret_;
 };
 
 struct str_key_tree {
