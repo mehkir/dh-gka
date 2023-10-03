@@ -214,32 +214,33 @@ struct response_message : offer_message {
         response_message() {
             message_type_ = message_type::RESPONSE;
         }
-        CryptoPP::Integer blinded_sponsor_secret_int_;
-        CryptoPP::Integer blinded_group_secret_int_;
+        CryptoPP::SecByteBlock blinded_sponsor_secret_;
+        CryptoPP::SecByteBlock blinded_group_secret_;
         struct new_sponsor {
             public:
                 boost::asio::ip::address ip_address_;
                 unsigned short port_;
                 member_id_t assigned_id_;
-                CryptoPP::Integer blinded_secret_int_;
+                CryptoPP::SecByteBlock blinded_secret_;
             private:
+                // Serializable members
                 friend class response_message;
                 std::vector<unsigned char> ip_address_bytes_;
-                std::vector<unsigned char> blinded_secret_int_bytes_;
+                std::vector<unsigned char> blinded_secret_bytes_;
         } new_sponsor;
     protected:
         virtual void make_members_serializable() override {
-            blinded_sponsor_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_sponsor_secret_int_);
-            blinded_group_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_group_secret_int_);
+            blinded_sponsor_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_sponsor_secret_);
+            blinded_group_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_group_secret_);
             new_sponsor.ip_address_bytes_ = get_ipv4_address_as_byte_vector(new_sponsor.ip_address_.to_v4());
-            new_sponsor.blinded_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(new_sponsor.blinded_secret_int_);
+            new_sponsor.blinded_secret_bytes_ = get_secbyteblock_as_byte_vector(new_sponsor.blinded_secret_);
         }
 
         virtual void deserialize_members() override {
-            blinded_sponsor_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_sponsor_secret_int_bytes_);
-            blinded_group_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_group_secret_int_bytes_);
+            blinded_sponsor_secret_ = get_byte_vector_as_secbyteblock(blinded_sponsor_secret_bytes_);
+            blinded_group_secret_ = get_byte_vector_as_secbyteblock(blinded_group_secret_bytes_);
             new_sponsor.ip_address_ = get_byte_vector_as_ipv4_address(new_sponsor.ip_address_bytes_);
-            new_sponsor.blinded_secret_int_ = get_byte_vector_as_cryptopp_integer(new_sponsor.blinded_secret_int_bytes_);
+            new_sponsor.blinded_secret_ = get_byte_vector_as_secbyteblock(new_sponsor.blinded_secret_bytes_);
         }
         
         virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
@@ -251,19 +252,19 @@ struct response_message : offer_message {
         }
     private:
         // Serializable members
-        std::vector<unsigned char> blinded_sponsor_secret_int_bytes_;
-        std::vector<unsigned char> blinded_group_secret_int_bytes_;
+        std::vector<unsigned char> blinded_sponsor_secret_bytes_;
+        std::vector<unsigned char> blinded_group_secret_bytes_;
         // Serialization
         friend class boost::serialization::access;
         template<class Archive>
         void serialize(Archive& ar, const unsigned int version) {
             ar & boost::serialization::base_object<offer_message>(*this);
-            ar & blinded_sponsor_secret_int_bytes_;
-            ar & blinded_group_secret_int_bytes_;
+            ar & blinded_sponsor_secret_bytes_;
+            ar & blinded_group_secret_bytes_;
             ar & new_sponsor.ip_address_bytes_;
             ar & new_sponsor.port_;
             ar & new_sponsor.assigned_id_;
-            ar & new_sponsor.blinded_secret_int_bytes_;
+            ar & new_sponsor.blinded_secret_bytes_;
         }
 };
 
@@ -272,17 +273,17 @@ struct distributed_response_message : offer_message {
         distributed_response_message() {
             message_type_ = message_type::DISTRIBUTED_RESPONSE;
         }
-        CryptoPP::Integer blinded_sponsor_secret_int_;
+        CryptoPP::SecByteBlock blinded_sponsor_secret_;
         CryptoPP::SecByteBlock encrypted_group_secret_;
         std::vector<unsigned char> initialization_vector_;
     protected:
         virtual void make_members_serializable() override {
-            blinded_sponsor_secret_int_bytes_ = get_cryptopp_integer_as_byte_vector(blinded_sponsor_secret_int_);
+            blinded_sponsor_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_sponsor_secret_);
             encrypted_group_secret_bytes_ = get_secbyteblock_as_byte_vector(encrypted_group_secret_);
         }
 
         virtual void deserialize_members() override {
-            blinded_sponsor_secret_int_ = get_byte_vector_as_cryptopp_integer(blinded_sponsor_secret_int_bytes_);
+            blinded_sponsor_secret_ = get_byte_vector_as_secbyteblock(blinded_sponsor_secret_bytes_);
             encrypted_group_secret_ = get_byte_vector_as_secbyteblock(encrypted_group_secret_bytes_);
         }
         
@@ -295,14 +296,14 @@ struct distributed_response_message : offer_message {
         }
     private:
         // Serializable members
-        std::vector<unsigned char> blinded_sponsor_secret_int_bytes_;
+        std::vector<unsigned char> blinded_sponsor_secret_bytes_;
         std::vector<unsigned char> encrypted_group_secret_bytes_;
         // Serialization
         friend class boost::serialization::access;
         template<class Archive>
         void serialize(Archive& ar, const unsigned int version) {
             ar & boost::serialization::base_object<offer_message>(*this);
-            ar & blinded_sponsor_secret_int_bytes_;
+            ar & blinded_sponsor_secret_bytes_;
             ar & encrypted_group_secret_bytes_;
             ar & initialization_vector_;
         }
