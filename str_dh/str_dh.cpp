@@ -10,8 +10,10 @@
 str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)) {
 #ifndef ECC_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
+    LOG_DEBUG("[<str_dh>] Using default DH")
 #else
     diffie_hellman_.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256r1());
+    LOG_DEBUG("[<str_dh>] Using ECDH")
 #endif
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());

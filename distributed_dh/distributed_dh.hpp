@@ -13,7 +13,6 @@
 #include <set>
 #include <tuple>
 
-#define ECC_DH
 #define DEFAULT_MEMBER_ID -1
 #define DEFAULT_VALUE -1
 

@@ -25,7 +25,11 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
+#ifndef PROTO_STR_DH
     distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+#else
+    str_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+#endif
     _member.start();
   }
   catch (std::exception& e)
