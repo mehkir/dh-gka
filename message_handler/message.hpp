@@ -29,12 +29,7 @@ enum message_type {
 };
 
 static std::vector<unsigned char> get_secbyteblock_as_byte_vector(CryptoPP::SecByteBlock _secbyteblock) {
-    std::vector<unsigned char> byte_vector;
-    CryptoPP::SecByteBlock::iterator iterator = _secbyteblock.BytePtr();
-    for (size_t i = 0; i < _secbyteblock.SizeInBytes(); i++) {
-        byte_vector.push_back(*iterator);
-        iterator++;
-    }
+    std::vector<unsigned char> byte_vector(_secbyteblock.BytePtr(), _secbyteblock.BytePtr()+_secbyteblock.SizeInBytes());
     return byte_vector;
 }
 
