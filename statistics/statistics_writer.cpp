@@ -57,7 +57,7 @@ void statistics_writer::write_statistics() {
         if((*composite_count_statistics_).count(count_metric::MEMBER_COUNT_)) {
             current_member_count = (*composite_count_statistics_)[count_metric::MEMBER_COUNT_];
         }
-        LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " add statistics")
+        LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
         condition.wait(lock);
     }
     std::ofstream statistics_file;
