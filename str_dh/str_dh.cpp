@@ -7,7 +7,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
 #ifndef ECC_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -24,6 +24,8 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_spo
     pending_requests_.clear();
     assigned_member_key_map_.clear();
     assigned_member_endpoint_map_.clear();
+
+    statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
 
     if (is_sponsor_) {
         member_id_ = 1;

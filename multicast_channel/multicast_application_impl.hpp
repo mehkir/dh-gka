@@ -12,6 +12,7 @@ class multicast_application_impl : public multicast_application {
       void send_multicast(boost::asio::streambuf& _buffer);
       void send_to(boost::asio::streambuf& _buffer, boost::asio::ip::udp::endpoint _endpoint);
       void start();
+      void stop();
       boost::asio::ip::udp::endpoint get_local_endpoint() const;
     private:
       boost::asio::io_service io_service_; // MUST be listed BEFORE unique_ptr

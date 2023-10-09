@@ -6,6 +6,7 @@
 #include "primitives.hpp"
 #include "message_handler.hpp"
 #include "multicast_application_impl.hpp"
+#include "statistics_recorder.hpp"
 
 #include <cryptopp/dh.h>
 #include <cryptopp/eccrypto.h>
@@ -44,6 +45,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unordered_map<service_id_t, std::unordered_map<member_id_t,blinded_secret_t>> assigned_member_key_map_;
         std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint,member_id_t>> assigned_member_endpoint_map_;
         std::unique_ptr<message_handler> message_handler_;
+        std::unique_ptr<statistics_recorder> statistics_recorder_;
     // Methods
     public:
         str_dh(bool _is_sponsor, service_id_t _service_id);

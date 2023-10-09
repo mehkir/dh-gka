@@ -30,6 +30,10 @@ void multicast_application_impl::start() {
   }
 }
 
+void multicast_application_impl::stop() {
+  io_service_.stop();
+}
+
 boost::asio::ip::udp::endpoint multicast_application_impl::get_local_endpoint() const {
   return multicast_channel_->get_local_endpoint();
 }
