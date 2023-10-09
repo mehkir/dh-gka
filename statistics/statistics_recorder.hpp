@@ -10,6 +10,7 @@ public:
     void record_timestamp(time_metric _time_metric);
     void record_count(count_metric _count_metric);
     void compose_statistics();
+    ~statistics_recorder();
 private:
     static std::mutex mutex_;
     static statistics_recorder* instance_;
@@ -18,7 +19,6 @@ private:
     shared_statistics_map* composite_count_statistics_;
     shared_statistics_map* composite_time_statistics_;
     statistics_recorder();
-    ~statistics_recorder();
 };
 
 #endif
