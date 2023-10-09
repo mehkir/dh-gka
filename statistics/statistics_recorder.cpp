@@ -45,8 +45,17 @@ void statistics_recorder::compose_statistics() {
                 condition.wait(lock);
                 LOG_DEBUG("[<statistics_recorder>] (compose_statistics) shared maps not intialized yet")
             }
-
-
+            LOG_DEBUG("[<statistics_recorder>] (compose_statistics) resume composing")
+            for(std::pair<metric_id, metric_value> pair : count_statistics_) {
+                if(!(*composite_count_statistics_).count(pair.first)) {
+                    (*composite_count_statistics_)[pair.first] = 0;
+                }
+                (*composite_count_statistics_)[pair.first] += pair.second;
+            }
+            for(std::pair<metric_id, metric_value> pair : time_statistics_) {
+                (*composite_time_statistics_)[pair.first] = pair.second;
+            }
+            condition.notify_one();
             shared_objects_initialized = true;
         } catch (boost::interprocess::interprocess_exception interprocess_exception) {
             std::cerr << interprocess_exception.what() << std::endl;

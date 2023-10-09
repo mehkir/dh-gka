@@ -3,7 +3,7 @@ project(multicast)
 
 set(CMAKE_CXX_STANDARD 26)
 
-add_compile_definitions(ECC_DH PROTO_STR_DH)
+add_compile_definitions(ECC_DH PROTO_STR_DH LOG)
 
 add_subdirectory(multicast_channel)
 add_subdirectory(message_handler)
@@ -26,5 +26,9 @@ target_link_libraries(multicast-dh-example PUBLIC str_dh_lib distributed_dh_lib)
 add_executable(statistics-writer-main statistics-writer-main.cpp)
 target_include_directories(statistics-writer-main PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/statistics)
 target_link_libraries(statistics-writer-main PUBLIC statistics_lib)
+# ------------------------------------------------ #
+add_executable(statistics-recorder-main statistics-recorder-main.cpp)
+target_include_directories(statistics-recorder-main PUBLIC ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/statistics)
+target_link_libraries(statistics-recorder-main PUBLIC statistics_lib)
 # ------------------------------------------------ #
 add_executable(testframe testframe.cpp)

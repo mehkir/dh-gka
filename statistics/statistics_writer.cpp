@@ -7,11 +7,13 @@
 
 std::mutex statistics_writer::mutex_;
 statistics_writer* statistics_writer::instance_;
+int statistics_writer::member_count_;
 
-statistics_writer* statistics_writer::get_instance() {
+statistics_writer* statistics_writer::get_instance(int _member_count) {
     std::lock_guard<std::mutex> lock_guard(mutex_);
     if(instance_ == nullptr) {
         instance_ = new statistics_writer();
+        member_count_ = _member_count;
     }
     return instance_;
 }
@@ -31,6 +33,8 @@ statistics_writer::statistics_writer() {
     shmem_allocator allocator(segment.get_segment_manager());
     composite_count_statistics_ = segment.construct<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME)(std::less<int>(), allocator);
     composite_time_statistics_ = segment.construct<shared_statistics_map>(TIME_STATISTICS_MAP_NAME)(std::less<int>(), allocator);
+    boost::interprocess::named_condition condition(boost::interprocess::create_only, STATISTICS_CONDITION);
+    boost::interprocess::named_mutex mutex(boost::interprocess::create_only, STATISTICS_MUTEX);
     LOG_DEBUG("[<statistics_writer>] Constructor is called")
 }
 
@@ -45,7 +49,17 @@ void statistics_writer::write_statistics() {
     boost::interprocess::managed_shared_memory segment(boost::interprocess::open_only, SEGMENT_NAME);
     composite_count_statistics_ = segment.find<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME).first;
     composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first;
-    // TODO make condition which waits for expected member count reached
+    boost::interprocess::named_condition condition(boost::interprocess::open_only, STATISTICS_CONDITION);
+    boost::interprocess::named_mutex mutex(boost::interprocess::open_only, STATISTICS_MUTEX);
+    boost::interprocess::scoped_lock<boost::interprocess::named_mutex> lock(mutex);
+    while(!(*composite_count_statistics_).count(count_metric::MEMBER_COUNT_) || (*composite_count_statistics_)[count_metric::MEMBER_COUNT_] != member_count_) {
+        int current_member_count = 0;
+        if((*composite_count_statistics_).count(count_metric::MEMBER_COUNT_)) {
+            current_member_count = (*composite_count_statistics_)[count_metric::MEMBER_COUNT_];
+        }
+        LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " add statistics")
+        condition.wait(lock);
+    }
     std::ofstream statistics_file;
     int filecount = 0;
     std::stringstream filename;
