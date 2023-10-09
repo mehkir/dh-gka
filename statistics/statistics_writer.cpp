@@ -31,17 +31,20 @@ statistics_writer::statistics_writer() {
     shmem_allocator allocator(segment.get_segment_manager());
     composite_count_statistics_ = segment.construct<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME)(std::less<int>(), allocator);
     composite_time_statistics_ = segment.construct<shared_statistics_map>(TIME_STATISTICS_MAP_NAME)(std::less<int>(), allocator);
-    LOGGER_DEBUG("[<statistics_writer>] Constructor is called")
+    LOG_DEBUG("[<statistics_writer>] Constructor is called")
 }
 
 statistics_writer::~statistics_writer() {
     boost::interprocess::managed_shared_memory segment(boost::interprocess::open_only, SEGMENT_NAME);
     segment.destroy<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME);
     segment.destroy<shared_statistics_map>(TIME_STATISTICS_MAP_NAME);
-    LOGGER_DEBUG("[<statistics_writer>] Destructor is called")
+    LOG_DEBUG("[<statistics_writer>] Destructor is called")
 }
 
 void statistics_writer::write_statistics() {
+    boost::interprocess::managed_shared_memory segment(boost::interprocess::open_only, SEGMENT_NAME);
+    composite_count_statistics_ = segment.find<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME).first;
+    composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first;
     // TODO make condition which waits for expected member count reached
     std::ofstream statistics_file;
     int filecount = 0;
@@ -55,29 +58,33 @@ void statistics_writer::write_statistics() {
     }
     statistics_file.open(filename.str());
     //Write header
-    for(metric_id m_id = 0; m_id < count_metric::SIZE; m_id++) {
+    for(metric_id m_id = 0; m_id < count_metric::COUNT_SIZE; m_id++) {
         statistics_file << count_metric_names_[m_id];
         statistics_file << ",";
     }
-    for(metric_id m_id = 0; m_id < time_metric::SIZE; m_id++) {
+    for(metric_id m_id = 0; m_id < time_metric::TIME_SIZE; m_id++) {
         statistics_file << time_metric_names_[m_id];
-        if(m_id != time_metric::SIZE-1) {
+        if(m_id != time_metric::TIME_SIZE-1) {
             statistics_file << ",";
         } else {
             statistics_file << "\n";
         }
     }
     //Write values (keep metric order like above so that header and values comply)
-    for(metric_id m_id = 0; m_id < count_metric::SIZE; m_id++) {
-        statistics_file << composite_count_statistics_[m_id];
-        statistics_file << ",";
-    }
-    for(metric_id m_id = 0; m_id < time_metric::SIZE; m_id++) {
-        statistics_file << statistics_[m_id];
-        if(m_id != time_metric::SIZE-1) {
+    for(metric_id m_id = 0; m_id < count_metric::COUNT_SIZE; m_id++) {
+        if((*composite_count_statistics_).count(m_id)) {
+            statistics_file << (*composite_count_statistics_)[m_id];
             statistics_file << ",";
-        } else {
-            statistics_file << "\n";
+        }
+    }
+    for(metric_id m_id = 0; m_id < time_metric::TIME_SIZE; m_id++) {
+        if((*composite_time_statistics_).count(m_id)) {
+            statistics_file << (*composite_time_statistics_)[m_id];
+            if(m_id != time_metric::TIME_SIZE-1) {
+                statistics_file << ",";
+            } else {
+                statistics_file << "\n";
+            }
         }
     }
     statistics_file.close();

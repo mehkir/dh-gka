@@ -25,6 +25,7 @@ class statistics_writer {
 public:
     static statistics_writer* get_instance();
     void write_statistics();
+    ~statistics_writer();
 private:
     static std::mutex mutex_;
     static statistics_writer* instance_;
@@ -36,8 +37,6 @@ private:
     shared_statistics_map* composite_count_statistics_;
     shared_statistics_map* composite_time_statistics_;
     statistics_writer();
-    ~statistics_writer();
-
 };
 
 #endif
