@@ -17,8 +17,8 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
 #endif
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
-    diffie_hellman_.GeneratePrivateKey(rng_, secret_);
-    diffie_hellman_.GeneratePublicKey(rng_, secret_, blinded_secret_);
+    diffie_hellman_.GeneratePrivateKey(rng_, secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
+    diffie_hellman_.GeneratePublicKey(rng_, secret_, blinded_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
     str_key_tree_map_.clear();
     pending_requests_.clear();
@@ -26,20 +26,20 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
     assigned_member_endpoint_map_.clear();
 
     statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
-
     if (is_sponsor_) {
+        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
         member_id_ = 1;
         keys_computed_count_ = 1;
         str_key_tree_map_[service_of_interest_] = build_str_tree(secret_, blinded_secret_, secret_, blinded_secret_);
 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
-        send(initial_offer.operator*());
+        send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
     } else {
         keys_computed_count_ = 0;
         std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
         initial_find->required_service_ = service_of_interest_;
-        send(initial_find.operator*());
+        send(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
     }
 }
 
@@ -56,7 +56,7 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
     if (is_sponsor_ && service_of_interest_ == _rcvd_find_message.required_service_) {
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
-        send(offer.operator*());
+        send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
     }
 }
 
@@ -65,7 +65,7 @@ void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::u
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
         request->blinded_secret_ = blinded_secret_;
         request->required_service_ = service_of_interest_;
-        send(request.operator*());
+        send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
     }
 }
 
@@ -98,9 +98,9 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         is_sponsor_ = true;
         member_id_ = _rcvd_response_message.new_sponsor.assigned_id_;
         secret_t group_secret(diffie_hellman_.AgreedValueLength());
-        diffie_hellman_.Agree(group_secret, secret_, _rcvd_response_message.blinded_group_secret_);
+        diffie_hellman_.Agree(group_secret, secret_, _rcvd_response_message.blinded_group_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
         blinded_secret_t blinded_group_secret(diffie_hellman_.PublicKeyLength());
-        diffie_hellman_.GeneratePublicKey(rng_, group_secret, blinded_group_secret);
+        diffie_hellman_.GeneratePublicKey(rng_, group_secret, blinded_group_secret); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
         std::unique_ptr<str_key_tree> str_tree = build_str_tree(group_secret,
                                                                 blinded_group_secret,
                                                                 secret_,
@@ -125,7 +125,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         while ((next_blinded_key = get_next_blinded_key()).SizeInBytes() != 0) {
             secret_t old_group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
             secret_t new_group_secret(diffie_hellman_.AgreedValueLength());
-            diffie_hellman_.Agree(new_group_secret, old_group_secret, next_blinded_key);
+            diffie_hellman_.Agree(new_group_secret, old_group_secret, next_blinded_key); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
             std::unique_ptr<str_key_tree> str_tree = build_str_tree(new_group_secret,
                                                                     DEFAULT_SECRET,
                                                                     DEFAULT_SECRET,
@@ -142,14 +142,6 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     }
     process_pending_request();
     contribute_statistics();
-}
-
-void str_dh::contribute_statistics() {
-    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
-        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
-            statistics_recorder_->contribute_statistics();
-            multicast_application_impl::stop();
-    }
 }
 
 void str_dh::process_pending_request() {
@@ -169,7 +161,7 @@ void str_dh::process_pending_request() {
     if (pending_remote_endpoint.address().to_string().compare(UNINITIALIZED_ADDRESS) != 0 && pending_blinded_secret.SizeInBytes() != 0) {
         std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
         secret_t group_secret(diffie_hellman_.AgreedValueLength());
-        diffie_hellman_.Agree(group_secret, previous_str_tree->root_node_.group_secret_, pending_blinded_secret);
+        diffie_hellman_.Agree(group_secret, previous_str_tree->root_node_.group_secret_, pending_blinded_secret); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
         std::unique_ptr<str_key_tree> str_tree = build_str_tree(group_secret,
                                                                 DEFAULT_SECRET,
                                                                 DEFAULT_SECRET,
@@ -194,7 +186,7 @@ void str_dh::process_pending_request() {
         keys_computed_count_++;
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
-        send(response.operator*());
+        send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
     } else {
         LOG_DEBUG("Send offer (not implemented yet)")
     }
@@ -252,6 +244,17 @@ std::string str_dh::short_secret_repr(secret_t _secret) {
     oss.str("");
     oss << secret_string.substr(0,3) << "..." << secret_string.substr(secret_string.length()-4,3);
     return oss.str();
+}
+
+void str_dh::contribute_statistics() {
+    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
+        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
+            if(member_id_ == INITIAL_SPONSOR_ID) {
+                statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
+            }
+            statistics_recorder_->contribute_statistics();
+            multicast_application_impl::stop();
+    }
 }
 
 void str_dh::start() {

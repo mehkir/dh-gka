@@ -17,6 +17,7 @@
 
 #define DEFAULT_MEMBER_ID -1
 #define DEFAULT_VALUE -1
+#define INITIAL_SPONSOR_ID 1
 #define DEFAULT_SECRET CryptoPP::SecByteBlock()
 
 typedef CryptoPP::SecByteBlock blinded_secret_t;
