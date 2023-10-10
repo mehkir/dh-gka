@@ -9,31 +9,32 @@ compile() {
 start() {
     cd /root/c++-multicast/
     /root/c++-multicast/build/statistics-writer-main $2 &
-    while [ -z $(pgrep statistics-writer-main) ]; do
-        sleep 1
-    done
+    # while [ -z $(pgrep statistics-wr) ]; do
+    #     sleep 1
+    # done
     echo "statistics-writer is started"
 
-    /root/c++-multicast/build/multicast-dh-example true $1 $2
-    while [ -z $(pgrep statistics-writer-main) ]; do
-        sleep 1
-    done
+    /root/c++-multicast/build/multicast-dh-example true $1 $2 &
+    # while [ -z $(pgrep multicast-dh) ]; do
+    #     sleep 1
+    # done
     echo "Initial sponsor is started"
     for (( i=0; i<$(($2-1)); i++ ))
     do 
-        /root/c++-multicast/build/multicast-dh-example false $1 $2
+        /root/c++-multicast/build/multicast-dh-example false $1 $2 &
     done
 
-    while [ -n $(pgrep statistics-writer-main) ]; do
+    while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
+        echo "Waiting for statistics-writer to stop"
     done
     echo "statistics-writer is stopped"
 }
 
 function on_exit() {
     echo "Terminating all processes ..."
-    pkill "pkill statistics-writer-main"
-    pkill "pkill multicast-dh-example"
+    pkill "statistics-wr"
+    pkill "multicast-dh"
     echo "All processes terminated"
     exit 1
 }
