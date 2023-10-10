@@ -32,7 +32,9 @@ void statistics_recorder::record_count(count_metric _count_metric) {
     count_statistics_[_count_metric]++;
 }
 
-void statistics_recorder::compose_statistics() {
+void statistics_recorder::contribute_statistics() {
+    LOG_DEBUG("[<statistics_recorder>] contribute_statistics")
+    bool waited_for_shm = false;
     for (bool shared_objects_initialized = false; !shared_objects_initialized;) {
         try {
             boost::interprocess::named_condition condition(boost::interprocess::open_only, STATISTICS_CONDITION);
@@ -42,10 +44,13 @@ void statistics_recorder::compose_statistics() {
 
             while (!(composite_count_statistics_ = segment.find<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME).first) &&
                !(composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first)) {
+                waited_for_shm = true;
                 condition.wait(lock);
-                LOG_DEBUG("[<statistics_recorder>] (compose_statistics) shared maps not intialized yet")
+                LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) shared maps not intialized yet")
             }
-            LOG_DEBUG("[<statistics_recorder>] (compose_statistics) resume composing")
+            if(waited_for_shm) {
+                LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) resume composing")
+            }
             for(std::pair<metric_id, metric_value> pair : count_statistics_) {
                 if(!(*composite_count_statistics_).count(pair.first)) {
                     (*composite_count_statistics_)[pair.first] = 0;
@@ -59,7 +64,7 @@ void statistics_recorder::compose_statistics() {
             shared_objects_initialized = true;
         } catch (boost::interprocess::interprocess_exception interprocess_exception) {
             std::cerr << interprocess_exception.what() << std::endl;
-            LOG_DEBUG("[<statistics_recorder>] (compose_statistics) shared objects not created yet")
+            LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) shared objects not created yet")
             sleep(1);
         }
     }

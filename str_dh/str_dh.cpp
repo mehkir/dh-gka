@@ -7,7 +7,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
 #ifndef ECC_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -75,6 +75,7 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
     }
     process_pending_request();
+    contribute_statistics();
 }
 
 void str_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -139,8 +140,16 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
             keys_computed_count_++;
         }
     }
-
     process_pending_request();
+    contribute_statistics();
+}
+
+void str_dh::contribute_statistics() {
+    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
+        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
+            statistics_recorder_->contribute_statistics();
+            multicast_application_impl::stop();
+    }
 }
 
 void str_dh::process_pending_request() {

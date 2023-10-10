@@ -88,7 +88,7 @@
             "request": "launch",
             // Resolved by CMake Tools:
             "program": "${workspaceFolder}/build/multicast-dh-example",
-            "args": ["false","42"],
+            "args": ["false","42","2"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -115,7 +115,7 @@
             "request": "launch",
             // Resolved by CMake Tools:
             "program": "${workspaceFolder}/build/multicast-dh-example",
-            "args": ["true","42"],
+            "args": ["true","42","2"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -142,7 +142,7 @@
             "request": "launch",
             // Resolved by CMake Tools:
             "program": "${workspaceFolder}/build/statistics-writer-main",
-            "args": [],
+            "args": ["2"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [

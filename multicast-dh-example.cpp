@@ -6,10 +6,10 @@
 int main(int argc, char* argv[]) {
   try
   {
-    if (argc != 3)
+    if (argc != 4)
     {
-      std::cerr << "Usage: member <is_sponsor> <service_id>\n";
-      std::cerr << "  Example: member true 42\n";
+      std::cerr << "Usage: multicast-dh-example <is_sponsor> <service_id> <member_count>\n";
+      std::cerr << "  Example: multicast-dh-example true 42 20\n";
       return 1;
     }
 
@@ -20,15 +20,20 @@ int main(int argc, char* argv[]) {
     }
 
     int service_id = std::stoi(argv[2]);
+    int member_count = std::stoi(argv[3]);
     if (service_id <= 0) {
       std::cerr << "service_id must be greater than 0\n";
+      return 1;
+    }
+    if (member_count <= 0) {
+      std::cerr << "member_count must be greater than 0\n";
       return 1;
     }
 
 #ifndef PROTO_STR_DH
     distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
 #else
-    str_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+    str_dh _member(boost::iequals(is_sponsor, "true"), service_id, member_count);
 #endif
     _member.start();
   }

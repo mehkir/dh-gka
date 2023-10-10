@@ -9,7 +9,7 @@ public:
     static statistics_recorder* get_instance();
     void record_timestamp(time_metric _time_metric);
     void record_count(count_metric _count_metric);
-    void compose_statistics();
+    void contribute_statistics();
     ~statistics_recorder();
 private:
     static std::mutex mutex_;

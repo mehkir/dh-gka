@@ -58,6 +58,7 @@ void statistics_writer::write_statistics() {
             current_member_count = (*composite_count_statistics_)[count_metric::MEMBER_COUNT_];
         }
         LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
+        condition.notify_one();
         condition.wait(lock);
     }
     std::ofstream statistics_file;
@@ -88,17 +89,17 @@ void statistics_writer::write_statistics() {
     for(metric_id m_id = 0; m_id < count_metric::COUNT_SIZE; m_id++) {
         if((*composite_count_statistics_).count(m_id)) {
             statistics_file << (*composite_count_statistics_)[m_id];
-            statistics_file << ",";
         }
+        statistics_file << ",";
     }
     for(metric_id m_id = 0; m_id < time_metric::TIME_SIZE; m_id++) {
         if((*composite_time_statistics_).count(m_id)) {
             statistics_file << (*composite_time_statistics_)[m_id];
-            if(m_id != time_metric::TIME_SIZE-1) {
-                statistics_file << ",";
-            } else {
-                statistics_file << "\n";
-            }
+        }
+        if(m_id != time_metric::TIME_SIZE-1) {
+            statistics_file << ",";
+        } else {
+            statistics_file << "\n";
         }
     }
     statistics_file.close();

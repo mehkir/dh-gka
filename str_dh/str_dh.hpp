@@ -46,9 +46,10 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint,member_id_t>> assigned_member_endpoint_map_;
         std::unique_ptr<message_handler> message_handler_;
         std::unique_ptr<statistics_recorder> statistics_recorder_;
+        int member_count_;
     // Methods
     public:
-        str_dh(bool _is_sponsor, service_id_t _service_id);
+        str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count);
         ~str_dh();
         void start();
         virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
@@ -68,6 +69,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         bool is_assigned();
         bool all_predecessors_known();
         std::string short_secret_repr(secret_t _secret);
+        void contribute_statistics();
 };
 
 #endif
