@@ -42,7 +42,7 @@ void statistics_recorder::contribute_statistics() {
             boost::interprocess::managed_shared_memory segment(boost::interprocess::open_only, SEGMENT_NAME);
             boost::interprocess::scoped_lock<boost::interprocess::named_mutex> lock(mutex);
 
-            while (!(composite_count_statistics_ = segment.find<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME).first) &&
+            while (!(composite_count_statistics_ = segment.find<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME).first) ||
                !(composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first)) {
                 waited_for_shm = true;
                 condition.wait(lock);
@@ -58,7 +58,11 @@ void statistics_recorder::contribute_statistics() {
                 (*composite_count_statistics_)[pair.first] += pair.second;
             }
             for(std::pair<metric_id, metric_value> pair : time_statistics_) {
-                (*composite_time_statistics_)[pair.first] = pair.second;
+                if(!(*composite_time_statistics_).count(pair.first)) {
+                    (*composite_time_statistics_)[pair.first] = pair.second;
+                } else {
+                    std::cerr << "[<statistics_recorder>] (contribute_statistics) composite_time_statistics map already contains time metric " << pair.first << std::endl;
+                }
             }
             condition.notify_one();
             shared_objects_initialized = true;
