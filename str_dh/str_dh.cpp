@@ -74,7 +74,9 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
     }
-    if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_ && pending_requests_[service_of_interest_].size() < member_count_-1) {
+    if(member_id_ != INITIAL_SPONSOR_ID) {
+        process_pending_request();
+    } else if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_ && pending_requests_[service_of_interest_].size() == member_count_-1) {
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
         process_pending_request();
     }
