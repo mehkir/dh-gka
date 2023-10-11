@@ -14,15 +14,20 @@ start() {
     # done
     echo "statistics-writer is started"
 
-    /root/c++-multicast/build/multicast-dh-example true $1 $2 &
-    # while [ -z $(pgrep multicast-dh) ]; do
-    #     sleep 1
-    # done
-    echo "Initial sponsor is started"
     for (( i=0; i<$(($2-1)); i++ ))
     do 
         /root/c++-multicast/build/multicast-dh-example false $1 $2 &
     done
+
+    while [[ $(pgrep multicast-dh | wc -l) != $(($2-1)) ]]; do
+        echo "Waiting for all subscribers to start up, $(pgrep multicast-dh | wc -l)/$(($2-1)) are up"
+        sleep 1
+    done
+    echo "All subscribers started up, sleep one extra second ..."
+    sleep 1
+
+    /root/c++-multicast/build/multicast-dh-example true $1 $2 &
+    echo "Initial sponsor is started"
 
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
