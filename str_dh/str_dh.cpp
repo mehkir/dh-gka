@@ -80,6 +80,10 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
         process_pending_request();
     }
+
+    if(member_id_ == INITIAL_SPONSOR_ID) {
+        LOG_DEBUG("[<str_dh>]: pending_requests size=" << pending_requests_[service_of_interest_].size())
+    }
     contribute_statistics();
 }
 
@@ -213,7 +217,11 @@ std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> str_dh::get_unassign
 }
 
 blinded_secret_t str_dh::get_next_blinded_key() {
-    return assigned_member_key_map_[service_of_interest_][keys_computed_count_ + member_id_];  
+    blinded_secret_t blinded_key;
+    if (assigned_member_key_map_[service_of_interest_].contains(keys_computed_count_ + member_id_)) {
+        blinded_key = assigned_member_key_map_[service_of_interest_][keys_computed_count_ + member_id_];
+    }
+    return blinded_key;  
 }
 
 std::unique_ptr<str_key_tree> str_dh::build_str_tree(secret_t _group_secret, blinded_secret_t _blinded_group_secret,
