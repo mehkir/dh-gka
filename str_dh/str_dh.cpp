@@ -100,6 +100,7 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
     if(member_id_ != INITIAL_SPONSOR_ID) {
         process_pending_request();
     } else if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_ && pending_requests_[service_of_interest_].size() == member_count_-1) {
+        timer_.cancel();
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
         process_pending_request();
     }
