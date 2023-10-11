@@ -50,7 +50,6 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<statistics_recorder> statistics_recorder_;
         int member_count_;
         boost::asio::steady_timer timer_;
-        boost::asio::chrono::milliseconds debounce_time_;
         bool debounce_timer_running_;
     // Methods
     public:
