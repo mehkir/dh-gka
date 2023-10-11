@@ -8,10 +8,10 @@
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
 str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
-#ifndef ECC_DH
+#ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
-#else
+#elif defined(ECC_DH)
     diffie_hellman_.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256r1());
     LOG_DEBUG("[<str_dh>] Using ECDH")
 #endif

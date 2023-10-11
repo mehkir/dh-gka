@@ -7,10 +7,10 @@
 #include <cryptopp/asn.h>
 
 distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)) {
-#ifndef ECC_DH
+#ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<distributed_dh>] Using default DH")
-#else
+#elif defined(ECC_DH)
     diffie_hellman_.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256r1());
     LOG_DEBUG("[<distributed_dh>] Using ECDH")
 #endif

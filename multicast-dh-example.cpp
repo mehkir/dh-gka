@@ -30,10 +30,10 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
-#ifndef PROTO_STR_DH
-    distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
-#else
+#ifdef PROTO_STR_DH
     str_dh _member(boost::iequals(is_sponsor, "true"), service_id, member_count);
+#elif defined(PROTO_DST_DH)
+    distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
 #endif
     _member.start();
   }
