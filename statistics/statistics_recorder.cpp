@@ -46,10 +46,10 @@ void statistics_recorder::contribute_statistics() {
                !(composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first)) {
                 waited_for_shm = true;
                 condition.wait(lock);
-                LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) shared maps not intialized yet")
+                std::cout << "[<statistics_recorder>] (contribute_statistics) shared maps not intialized yet" << std::endl;
             }
             if(waited_for_shm) {
-                LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) resume composing")
+                std::cout << "[<statistics_recorder>] (contribute_statistics) resume composing" << std::endl;
             }
             for(std::pair<metric_id, metric_value> pair : count_statistics_) {
                 if(!(*composite_count_statistics_).count(pair.first)) {
@@ -68,7 +68,7 @@ void statistics_recorder::contribute_statistics() {
             shared_objects_initialized = true;
         } catch (boost::interprocess::interprocess_exception interprocess_exception) {
             std::cerr << interprocess_exception.what() << std::endl;
-            LOG_DEBUG("[<statistics_recorder>] (contribute_statistics) shared objects not created yet")
+            std::cout << "[<statistics_recorder>] (contribute_statistics) shared objects not created yet" << std::endl;
             sleep(1);
         }
     }
