@@ -7,7 +7,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), timer_(multicast_application_impl::get_io_service()) {
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -35,6 +35,11 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+
+        timer_.expires_from_now(boost::asio::chrono::seconds(CYCLIC_OFFER_SECONDS));
+        timer_.async_wait(
+            std::bind(&str_dh::send_cyclic_offer,
+                    this, std::placeholders::_1));
     } else {
         keys_computed_count_ = 0;
         std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
@@ -45,6 +50,24 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
 
 str_dh::~str_dh() {
 
+}
+
+void str_dh::send_cyclic_offer(const boost::system::error_code &_error) {
+    if (_error) {
+        return;
+    }
+    if (is_sponsor_) {
+        std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
+        offer->offered_service_ = service_of_interest_;
+        send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << " sent cyclic offer")
+        timer_.expires_from_now(boost::asio::chrono::seconds(CYCLIC_OFFER_SECONDS));
+        timer_.async_wait(
+            std::bind(&str_dh::send_cyclic_offer,
+                    this, std::placeholders::_1));
+    } else {
+        std::cerr << "[<str_dh>]: member has to be sponsor in order to offer" << std::endl;
+    }
 }
 
 void str_dh::received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
