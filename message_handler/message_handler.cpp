@@ -29,6 +29,14 @@ void message_handler::deserialize_and_callback(unsigned char* _data, size_t _byt
         process_response(buffer, _remote_endpoint);
     }
         break;
+    case message_type::MEMBER_INFO_REQUEST: {
+        process_member_info_request(buffer, _remote_endpoint);
+    }
+        break;
+    case message_type::MEMBER_INFO_RESPONSE: {
+        process_member_info_response(buffer, _remote_endpoint);
+    }
+        break;
     case message_type::DISTRIBUTED_RESPONSE: {
         process_distributed_response(buffer, _remote_endpoint);
     }
