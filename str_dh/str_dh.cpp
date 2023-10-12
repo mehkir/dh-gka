@@ -109,7 +109,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
 
     if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
-        std::cerr << "[<str_dh>]: (process_request) Already assigned with member_id=" << member_id_ << std::endl;
+        std::cerr << "[<str_dh>]: (process_response) Already assigned with member_id=" << member_id_ << std::endl;
     }
 
     if (!is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
