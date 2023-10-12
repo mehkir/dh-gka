@@ -31,7 +31,6 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
         member_id_ = 1;
         keys_computed_count_ = 1;
         str_key_tree_map_[service_of_interest_] = build_str_tree(secret_, blinded_secret_, secret_, blinded_secret_);
-
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
