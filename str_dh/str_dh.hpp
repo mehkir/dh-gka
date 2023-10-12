@@ -49,14 +49,11 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<message_handler> message_handler_;
         std::unique_ptr<statistics_recorder> statistics_recorder_;
         int member_count_;
-        boost::asio::steady_timer timer_;
-        bool debounce_timer_running_;
     // Methods
     public:
         str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count);
         ~str_dh();
         void start();
-        void send_cyclic_offer(const boost::system::error_code &_error);
         virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;

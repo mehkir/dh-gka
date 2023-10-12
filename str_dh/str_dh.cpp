@@ -7,7 +7,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), timer_(multicast_application_impl::get_io_service()), debounce_timer_running_(false) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -35,48 +35,16 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
-
-        timer_.expires_from_now(boost::asio::chrono::seconds(CYCLIC_OFFER_SECONDS));
-        timer_.async_wait(
-            std::bind(&str_dh::send_cyclic_offer,
-                    this, std::placeholders::_1));
     } else {
         keys_computed_count_ = 0;
-
-        std::srand((unsigned) std::time(NULL));
-        timer_.expires_from_now(boost::asio::chrono::milliseconds((1 + (std::rand() % 1000)) * 10));
-        timer_.async_wait([this](const boost::system::error_code& error) {
-            if(!error) {
-                std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
-                initial_find->required_service_ = service_of_interest_;
-                send(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
-            } else {
-                std::cerr << error.what() << std::endl;
-            }
-        });
+        std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
+        initial_find->required_service_ = service_of_interest_;
+        send(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
     }
 }
 
 str_dh::~str_dh() {
 
-}
-
-void str_dh::send_cyclic_offer(const boost::system::error_code &_error) {
-    if (_error == boost::asio::error::operation_aborted) {
-        std::cerr << "Timer was canceled" << std::endl;
-    } else if (_error) {
-        std::cerr << "Timer failed: " << _error.what() << std::endl;
-    }
-    if (is_sponsor_) {
-        std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
-        offer->offered_service_ = service_of_interest_;
-        send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
-        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << " cyclic offer sent")
-        timer_.expires_from_now(boost::asio::chrono::seconds(CYCLIC_OFFER_SECONDS));
-        timer_.async_wait(std::bind(&str_dh::send_cyclic_offer, this, std::placeholders::_1));
-    } else {
-        std::cerr << "[<str_dh>]: member has to be sponsor in order to offer" << std::endl;
-    }
 }
 
 void str_dh::received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -93,31 +61,11 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_ && !debounce_timer_running_) {
-        std::srand((unsigned) std::time(NULL));
-        timer_.expires_from_now(boost::asio::chrono::milliseconds(1 + (std::rand() % 1000)));
-        boost::system::error_code ec;
-        timer_.cancel(ec);
-        timer_.expires_from_now(boost::asio::chrono::milliseconds(1 + (std::rand() % 1000)), ec);
-        timer_.async_wait([this](const boost::system::error_code& error) {
-            if(!error) {
-                std::unique_ptr<request_message> request = std::make_unique<request_message>();
-                request->blinded_secret_ = blinded_secret_;
-                request->required_service_ = service_of_interest_;
-                send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
-                LOG_DEBUG("[<str_dh>]: request sent")
-                debounce_timer_running_ = false;
-            } else if (error == boost::asio::error::operation_aborted) {
-                std::cerr << "Timer was canceled" << std::endl;
-            } else {
-                std::cerr << "Timer failed: " << error.what() << std::endl;
-            }
-        });
-        if(!ec) {
-            debounce_timer_running_ = true;
-        } else {
-            std::cerr << "Timer failed: " << ec.what() << std::endl;
-        }
+    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
+        std::unique_ptr<request_message> request = std::make_unique<request_message>();
+        request->blinded_secret_ = blinded_secret_;
+        request->required_service_ = service_of_interest_;
+        send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
     }
 }
 
@@ -129,7 +77,6 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
     if(member_id_ != INITIAL_SPONSOR_ID) {
         process_pending_request();
     } else if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_ && pending_requests_[service_of_interest_].size() == member_count_-1) {
-        timer_.cancel();
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
         process_pending_request();
     }
