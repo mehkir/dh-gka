@@ -300,17 +300,13 @@ struct member_info_response_message : offer_message {
             message_type_ = message_type::MEMBER_INFO_RESPONSE;
         }
         member_id_t member_id_;
-        boost::asio::ip::address ip_address_;
-        unsigned short port_;
         blinded_secret_t blinded_secret_;
     protected:
         virtual void make_members_serializable() override {
-            ip_address_bytes_ = get_ipv4_address_as_byte_vector(ip_address_.to_v4());
             blinded_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_secret_);
         }
 
         virtual void deserialize_members() override {
-            ip_address_ = get_byte_vector_as_ipv4_address(ip_address_bytes_);
             blinded_secret_ = get_byte_vector_as_secbyteblock(blinded_secret_bytes_);
         }
 
@@ -323,7 +319,6 @@ struct member_info_response_message : offer_message {
         }
     private:
         // Serializable members
-        std::vector<unsigned char> ip_address_bytes_;
         std::vector<unsigned char> blinded_secret_bytes_;
         // Serialization
         friend class boost::serialization::access;
@@ -331,8 +326,6 @@ struct member_info_response_message : offer_message {
         void serialize(Archive& ar, const unsigned int version) {
             ar & boost::serialization::base_object<offer_message>(*this);
             ar & member_id_;
-            ar & ip_address_bytes_;
-            ar & port_;
             ar & blinded_secret_bytes_;
         }
 };
