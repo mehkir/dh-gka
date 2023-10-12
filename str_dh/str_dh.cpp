@@ -157,11 +157,24 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    
+    if (is_assigned() && _rcvd_member_info_request_message.required_service_ == service_of_interest_
+        && std::find(_rcvd_member_info_request_message.requested_members_.begin(), _rcvd_member_info_request_message.requested_members_.end(), member_id_) != _rcvd_member_info_request_message.requested_members_.end()) {
+            std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
+            member_info_resp_msg->member_id_ = member_id_;
+            member_info_resp_msg->blinded_secret_ = blinded_secret_;
+            send(member_info_resp_msg.operator*());
+    }
 }
 
 void str_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-
+    if (!assigned_member_endpoint_map_[_rcvd_member_info_response_message.offered_service_].contains(_remote_endpoint)) {
+        assigned_member_key_map_[_rcvd_member_info_response_message.offered_service_][_rcvd_member_info_response_message.member_id_] = _rcvd_member_info_response_message.blinded_secret_;
+        assigned_member_endpoint_map_[_rcvd_member_info_response_message.offered_service_][_remote_endpoint] = _rcvd_member_info_response_message.member_id_;
+        pending_requests_[_rcvd_member_info_response_message.offered_service_].erase(_remote_endpoint);
+    }
+    if (is_sponsor_ && all_predecessors_known()) {
+        process_pending_request();
+    }
 }
 
 void str_dh::process_pending_request() {
