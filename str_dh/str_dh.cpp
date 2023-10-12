@@ -73,16 +73,21 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
     }
+    /*
     if(member_id_ != INITIAL_SPONSOR_ID) {
         process_pending_request();
     } else if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_ && pending_requests_[service_of_interest_].size() == member_count_-1) {
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
         process_pending_request();
     }
-
     if(member_id_ == INITIAL_SPONSOR_ID) {
         LOG_DEBUG("[<str_dh>]: pending_requests size=" << pending_requests_[service_of_interest_].size())
     }
+    */
+    if(member_id_ == INITIAL_SPONSOR_ID && is_sponsor_) {
+        statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
+    }
+    process_pending_request();
     contribute_statistics();
 }
 
@@ -102,6 +107,11 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     pending_requests_[_rcvd_response_message.offered_service_].erase(_remote_endpoint);
 
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
+
+    if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
+        std::cerr << "[<str_dh>]: (process_request) Already assigned with member_id=" << member_id_ << std::endl;
+    }
+
     if (!is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
         member_id_ = _rcvd_response_message.new_sponsor.assigned_id_;
@@ -123,10 +133,6 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         keys_computed_count_++;
         LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
-    }
-
-    if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
-        std::cerr << "[<str_dh>]: (process_request) Already assigned with member_id=" << member_id_ << std::endl;
     }
 
     if (!is_sponsor_ && is_assigned()
