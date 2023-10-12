@@ -125,7 +125,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
 
-    if (is_assigned && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
+    if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
         std::cerr << "[<str_dh>]: (process_request) Already assigned with member_id=" << member_id_ << std::endl;
     }
 
@@ -162,7 +162,7 @@ void str_dh::process_member_info_request(member_info_request_message _rcvd_membe
             std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
             member_info_resp_msg->member_id_ = member_id_;
             member_info_resp_msg->blinded_secret_ = blinded_secret_;
-            send(member_info_resp_msg.operator*());
+            send(member_info_resp_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_RESPONSE_MESSAGE_COUNT_);
     }
 }
 
