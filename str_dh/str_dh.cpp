@@ -102,7 +102,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     pending_requests_[_rcvd_response_message.offered_service_].erase(_remote_endpoint);
 
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
-    if (become_sponsor && !is_assigned() && _rcvd_response_message.offered_service_ == service_of_interest_) {
+    if (!is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
         member_id_ = _rcvd_response_message.new_sponsor.assigned_id_;
         secret_t group_secret(diffie_hellman_.AgreedValueLength());
@@ -123,6 +123,10 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         keys_computed_count_++;
         LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+    }
+
+    if (is_assigned && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
+        std::cerr << "[<str_dh>]: (process_request) Already assigned with member_id=" << member_id_ << std::endl;
     }
 
     if (!is_sponsor_ && is_assigned()
@@ -157,7 +161,7 @@ void str_dh::process_pending_request() {
         return;
     }
 
-    if (all_predecessors_known()) {
+    if (!all_predecessors_known()) {
         LOG_DEBUG("Request synch (not implemented yet)")
         return;
     }
@@ -244,7 +248,7 @@ bool str_dh::is_assigned() {
 }
 
 bool str_dh::all_predecessors_known() {
-    return assigned_member_endpoint_map_[service_of_interest_].size() < member_id_-1;
+    return assigned_member_endpoint_map_[service_of_interest_].size() >= member_id_-1;
 }
 
 std::string str_dh::short_secret_repr(secret_t _secret) {
