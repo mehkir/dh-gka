@@ -6,25 +6,33 @@ compile() {
     echo "All targets are compiled."
 }
 
+get_process_count() {
+    echo $(pgrep multicast-dh | wc -l)
+}
+
+get_subscriber_count() {
+    echo $(($1-1))
+}
+
 start() {
     cd /root/c++-multicast/
     /root/c++-multicast/build/statistics-writer-main $2 &
-    # while [ -z $(pgrep statistics-wr) ]; do
-    #     sleep 1
-    # done
     echo "statistics-writer is started"
 
-    for (( i=0; i<$(($2-1)); i++ ))
-    do 
+    for (( i=0; i<$(get_subscriber_count $2); i++ ))
+    do
         /root/c++-multicast/build/multicast-dh-example false $1 $2 &
     done
-    /root/c++-multicast/build/multicast-dh-example true $1 $2 &
-    echo "Initial sponsor is started"
-    while [[ $(($(pgrep multicast-dh | wc -l)-1)) != $(($2-1)) ]]; do
-        echo "Waiting for all subscribers to start up, $(($(pgrep multicast-dh | wc -l)-1))/$(($2-1)) are up"
+    while [[ $(get_process_count) != $(get_subscriber_count $2) ]]; do
+        echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $2) are up"
         sleep 1
     done
     echo "All subscribers started up"
+
+    /root/c++-multicast/build/multicast-dh-example true $1 $2 &
+    echo "Initial sponsor is started"
+    sleep 1
+
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
         echo "Waiting for statistics-writer to stop"
