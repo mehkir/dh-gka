@@ -69,6 +69,18 @@ void message_handler::process_response(boost::asio::streambuf& buffer, boost::as
     key_agreement_protocol_->process_response(rcvd_response_message, _remote_endpoint);
 }
 
+void message_handler::process_member_info_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    member_info_request_message rcvd_member_info_request_message_;
+    rcvd_member_info_request_message_.deserialize_(buffer);
+    key_agreement_protocol_->process_member_info_request(rcvd_member_info_request_message_, _remote_endpoint);
+}
+
+void message_handler::process_member_info_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    member_info_response_message rcvd_member_info_response_message_;
+    rcvd_member_info_response_message_.deserialize_(buffer);
+    key_agreement_protocol_->process_member_info_response(rcvd_member_info_response_message_, _remote_endpoint);
+}
+
 void message_handler::process_distributed_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
     distributed_response_message rcvd_distributed_response_message;
     rcvd_distributed_response_message.deserialize_(buffer);

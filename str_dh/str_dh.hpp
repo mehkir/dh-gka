@@ -56,6 +56,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         virtual void process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     protected:
     private:
@@ -67,6 +69,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send(message& _message);
         bool is_assigned();
         bool all_predecessors_known();
+        std::vector<member_id_t> get_unknown_predecessors();
         std::string short_secret_repr(secret_t _secret);
         void contribute_statistics();
 };

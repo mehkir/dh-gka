@@ -117,6 +117,18 @@ void tg_dh::process_response(response_message _rcvd_response_message, boost::asi
     process_pending_request();
 }
 
+void tg_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void tg_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void tg_dh::process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
 void tg_dh::process_pending_request() {
     if (!is_sponsor_) {
         return;

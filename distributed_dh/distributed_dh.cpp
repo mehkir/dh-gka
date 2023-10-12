@@ -143,3 +143,11 @@ bool distributed_dh::is_assigned() {
 void distributed_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     // Unused, just here to comply with key_agreement_protocol
 }
+
+void distributed_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void distributed_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}

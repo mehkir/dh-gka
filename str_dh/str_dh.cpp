@@ -156,13 +156,25 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     contribute_statistics();
 }
 
+void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    
+}
+
+void str_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+
+}
+
 void str_dh::process_pending_request() {
     if (!is_sponsor_) {
         return;
     }
 
     if (!all_predecessors_known()) {
-        LOG_DEBUG("Request synch (not implemented yet)")
+        LOG_DEBUG("[<str_dh>]: (process_pending_request) Request predecessors")
+        std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
+        member_info_req_msg->required_service_ = service_of_interest_;
+        member_info_req_msg->requested_members_ = get_unknown_predecessors();
+        send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
         return;
     }
 
@@ -200,7 +212,10 @@ void str_dh::process_pending_request() {
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
     } else {
-        LOG_DEBUG("Send offer (not implemented yet)")
+        LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
+        std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
+        offer->offered_service_ = service_of_interest_;
+        send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
     }
 }
 
@@ -249,6 +264,16 @@ bool str_dh::is_assigned() {
 
 bool str_dh::all_predecessors_known() {
     return assigned_member_endpoint_map_[service_of_interest_].size() >= member_id_-1;
+}
+
+std::vector<member_id_t> str_dh::get_unknown_predecessors() {
+    std::vector<member_id_t> unknown_predecessors;
+    for (uint32_t i = 1; i < member_id_; i++) {
+        if (!assigned_member_key_map_[service_of_interest_].contains(i)) {
+            unknown_predecessors.push_back(i);
+        }
+    }
+    return unknown_predecessors;
 }
 
 std::string str_dh::short_secret_repr(secret_t _secret) {
