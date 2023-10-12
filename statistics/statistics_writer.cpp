@@ -54,11 +54,11 @@ void statistics_writer::write_statistics() {
     boost::interprocess::scoped_lock<boost::interprocess::named_mutex> lock(mutex);
     int current_member_count = 0;
     while(!(*composite_count_statistics_).count(count_metric::MEMBER_COUNT_) || (current_member_count = (*composite_count_statistics_)[count_metric::MEMBER_COUNT_]) != member_count_) {
-        std::cout << "[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics" << std::endl;
+        LOG_STD("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
         condition.notify_one();
         condition.wait(lock);
     }
-    std::cout << "[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics" << std::endl;
+    LOG_STD("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
     std::ofstream statistics_file;
     int filecount = 0;
     std::stringstream filename;
