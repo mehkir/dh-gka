@@ -25,6 +25,8 @@ enum message_type {
     OFFER,
     REQUEST,
     RESPONSE,
+    MEMBER_INFO_REQUEST,
+    MEMBER_INFO_RESPONSE,
     DISTRIBUTED_RESPONSE
 };
 
@@ -180,7 +182,7 @@ struct request_message : find_message {
         request_message() {
             message_type_ = message_type::REQUEST;
         }
-        CryptoPP::SecByteBlock blinded_secret_;
+        blinded_secret_t blinded_secret_;
     protected:
         virtual void make_members_serializable() override {
             blinded_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_secret_);
@@ -214,14 +216,14 @@ struct response_message : offer_message {
         response_message() {
             message_type_ = message_type::RESPONSE;
         }
-        CryptoPP::SecByteBlock blinded_sponsor_secret_;
-        CryptoPP::SecByteBlock blinded_group_secret_;
+        blinded_secret_t blinded_sponsor_secret_;
+        blinded_secret_t blinded_group_secret_;
         struct new_sponsor {
             public:
                 boost::asio::ip::address ip_address_;
                 unsigned short port_;
                 member_id_t assigned_id_;
-                CryptoPP::SecByteBlock blinded_secret_;
+                blinded_secret_t blinded_secret_;
             private:
                 // Serializable members
                 friend class response_message;
@@ -268,13 +270,80 @@ struct response_message : offer_message {
         }
 };
 
+struct member_info_request_message : find_message {
+    public:
+        member_info_request_message() {
+            message_type_ = message_type::MEMBER_INFO_REQUEST;
+        }
+        std::vector<member_id_t> requested_members_;
+    protected:
+        virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
+            _oarchive << *this;
+        }
+
+        virtual void read_from_archive(boost::archive::binary_iarchive& _iarchive) override {
+            _iarchive >> *this;
+        }
+    private:
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<find_message>(*this);
+            ar & requested_members_;
+        }
+};
+
+struct member_info_response_message : offer_message {
+    public:
+        member_info_response_message() {
+            message_type_ = message_type::MEMBER_INFO_RESPONSE;
+        }
+        member_id_t member_id_;
+        boost::asio::ip::address ip_address_;
+        unsigned short port_;
+        blinded_secret_t blinded_secret_;
+    protected:
+        virtual void make_members_serializable() override {
+            ip_address_bytes_ = get_ipv4_address_as_byte_vector(ip_address_.to_v4());
+            blinded_secret_bytes_ = get_secbyteblock_as_byte_vector(blinded_secret_);
+        }
+
+        virtual void deserialize_members() override {
+            ip_address_ = get_byte_vector_as_ipv4_address(ip_address_bytes_);
+            blinded_secret_ = get_byte_vector_as_secbyteblock(blinded_secret_bytes_);
+        }
+
+        virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
+            _oarchive << *this;
+        }
+
+        virtual void read_from_archive(boost::archive::binary_iarchive& _iarchive) override {
+            _iarchive >> *this;
+        }
+    private:
+        // Serializable members
+        std::vector<unsigned char> ip_address_bytes_;
+        std::vector<unsigned char> blinded_secret_bytes_;
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<offer_message>(*this);
+            ar & member_id_;
+            ar & ip_address_bytes_;
+            ar & port_;
+            ar & blinded_secret_bytes_;
+        }
+};
+
 struct distributed_response_message : offer_message {
     public:
         distributed_response_message() {
             message_type_ = message_type::DISTRIBUTED_RESPONSE;
         }
-        CryptoPP::SecByteBlock blinded_sponsor_secret_;
-        CryptoPP::SecByteBlock encrypted_group_secret_;
+        blinded_secret_t blinded_sponsor_secret_;
+        secret_t encrypted_group_secret_;
         std::vector<unsigned char> initialization_vector_;
     protected:
         virtual void make_members_serializable() override {
