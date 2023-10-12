@@ -21,9 +21,6 @@
 #define DEFAULT_SECRET CryptoPP::SecByteBlock()
 #define CYCLIC_OFFER_SECONDS 1
 
-typedef CryptoPP::SecByteBlock blinded_secret_t;
-typedef CryptoPP::SecByteBlock secret_t;
-
 class str_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
     public:
