@@ -4,13 +4,15 @@
 class multicast_app : public multicast_application_impl {
 public:
     multicast_app() {
+      LOG_STD("[<multicast_app>]: endpoint(" << get_local_endpoint().address() << "," << get_local_endpoint().port() << ")")
     }
 
     ~multicast_app() {
     }
 
     void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override {
-        LOG_DEBUG(_data)
+      std::lock_guard<std::mutex> receive_guard(mutex_);
+      LOG_DEBUG(_data)
     }
 
     void send(boost::asio::streambuf& buffer) {
@@ -20,6 +22,8 @@ public:
     void start() {
       multicast_application_impl::start();
     }
+private:
+    std::mutex mutex_;
 };
 
 int main(int argc, char* argv[]) {
