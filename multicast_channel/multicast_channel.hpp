@@ -30,6 +30,7 @@ private:
   void receive_unicast();
   void handle_multicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd);
   void handle_unicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd);
+  bool is_port_bound_once(std::uint16_t _port);
 
 public:
   multicast_channel(boost::asio::io_service& _io_service,
