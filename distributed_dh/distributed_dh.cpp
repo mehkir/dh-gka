@@ -46,7 +46,9 @@ void distributed_dh::start() {
 
 void distributed_dh::received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
     std::lock_guard<std::mutex> lock_receive(receive_mutex_);
-    message_handler_->deserialize_and_callback(_data, _bytes_recvd, _remote_endpoint);
+    if (get_local_endpoint().port() != _remote_endpoint.port()) {
+        message_handler_->deserialize_and_callback(_data, _bytes_recvd, _remote_endpoint);
+    }
 }
 
 void distributed_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
