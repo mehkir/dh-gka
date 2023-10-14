@@ -1,13 +1,16 @@
 #include "str_dh.hpp"
 #include "MODP2048_256sg.hpp"
 
+#include <random>
 #include <cryptopp/nbtheory.h>
 #include <cryptopp/oids.h>
 #include <cryptopp/asn.h>
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, int _member_count) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _request_delay_min, std::uint32_t _request_delay_max, std::uint32_t _request_count_target) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), request_count_target_(_request_count_target), request_timer_(multicast_application_impl::get_io_service()), request_counter_(0) {
+    request_delay_ = compute_request_delay(_request_delay_min, _request_delay_max);
+    request_timer_.expires_from_now(request_delay_);
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -48,7 +51,9 @@ str_dh::~str_dh() {
 
 void str_dh::received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) {
     std::lock_guard<std::mutex> lock_receive(receive_mutex_);
-    message_handler_->deserialize_and_callback(_data, _bytes_recvd, _remote_endpoint);
+    if (get_local_endpoint().port() != _remote_endpoint.port()) {
+        message_handler_->deserialize_and_callback(_data, _bytes_recvd, _remote_endpoint);
+    }
 }
 
 void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -60,15 +65,23 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (request_counter_ >= request_count_target_) { request_counter_ = 0;}
     if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
-        std::unique_ptr<request_message> request = std::make_unique<request_message>();
-        request->blinded_secret_ = blinded_secret_;
-        request->required_service_ = service_of_interest_;
-        send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+        request_timer_.expires_from_now(request_delay_);
+        request_timer_.async_wait([this](const boost::system::error_code& _error) {
+            if (!_error && request_counter_ <= request_count_target_ ) {
+                std::unique_ptr<request_message> request = std::make_unique<request_message>();
+                request->blinded_secret_ = blinded_secret_;
+                request->required_service_ = service_of_interest_;
+                send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+                request_counter_++;
+            }
+        });
     }
 }
 
 void str_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    request_counter_++;
     if (!assigned_member_endpoint_map_[_rcvd_request_message.required_service_].contains(_remote_endpoint)
         && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
@@ -109,7 +122,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
 
     if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
-        std::cerr << "[<str_dh>]: (process_response) Already assigned with member_id=" << member_id_ << std::endl;
+        std::cerr << "[<str_dh>]: (process_response) Already assigned with member_id=" << member_id_ << ", member_id from message=" << _rcvd_response_message.new_sponsor.assigned_id_ << std::endl;
     }
 
     if (!is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
@@ -229,6 +242,8 @@ void str_dh::process_pending_request() {
         keys_computed_count_++;
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+
+        LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response->new_sponsor.assigned_id_)
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
     } else {
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
@@ -298,12 +313,12 @@ std::vector<member_id_t> str_dh::get_unknown_predecessors() {
 std::string str_dh::short_secret_repr(secret_t _secret) {
     CryptoPP::Integer secret_int;
     secret_int.Decode(_secret.BytePtr(), _secret.SizeInBytes());
-    std::ostringstream oss;
-    oss << secret_int;
-    std::string secret_string = oss.str();
-    oss.str("");
-    oss << secret_string.substr(0,3) << "..." << secret_string.substr(secret_string.length()-4,3);
-    return oss.str();
+    std::stringstream ss;
+    ss << secret_int;
+    std::string secret_string = ss.str();
+    ss.str("");
+    ss << secret_string.substr(0,3) << "..." << secret_string.substr(secret_string.length()-4,3);
+    return ss.str();
 }
 
 void str_dh::contribute_statistics() {
@@ -315,6 +330,19 @@ void str_dh::contribute_statistics() {
             statistics_recorder_->contribute_statistics();
             multicast_application_impl::stop();
     }
+}
+
+std::chrono::milliseconds str_dh::compute_request_delay(std::uint32_t _request_delay_min, std::uint32_t _request_delay_max) {
+    if (_request_delay_min > _request_delay_max) {
+        const std::uint32_t tmp(_request_delay_min);
+        _request_delay_min = _request_delay_max;
+        _request_delay_max = tmp;
+    }
+    std::random_device random_device;
+    std::mt19937 mersenne_twister(random_device());
+    std::uniform_int_distribution<std::uint32_t> distribution(
+            _request_delay_min, _request_delay_max);
+    return std::chrono::milliseconds(distribution(mersenne_twister));
 }
 
 void str_dh::start() {
