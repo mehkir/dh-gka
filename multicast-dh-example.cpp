@@ -14,16 +14,26 @@ int main(int argc, char* argv[]) {
     }
 
     std::string is_sponsor(argv[1]);
-    if (!boost::iequals(is_sponsor, "true") && !boost::iequals(is_sponsor, "false")) {
-      std::cerr << "is_sponsor must be \"true\" or \"false\" (case-insensitive)\n";
-      return 1;
-    }
-
     std::uint32_t service_id = std::stoi(argv[2]);
     std::uint32_t member_count = std::stoi(argv[3]);
     std::uint32_t request_delay_min = std::stoi(argv[4]);
     std::uint32_t request_delay_max = std::stoi(argv[5]);
     std::uint32_t request_count_target = std::stoi(argv[6]);
+
+    if (!boost::iequals(is_sponsor, "true") && !boost::iequals(is_sponsor, "false")) {
+      std::cerr << "is_sponsor must be \"true\" or \"false\" (case-insensitive)\n";
+      return 1;
+    }
+
+    if (service_id < 0) {
+      std::cerr << "service id must be positive\n";
+      return 1;
+    }
+
+    if (member_count < 2) {
+      std::cerr << "service id must be greater than 1\n";
+      return 1;
+    }
 
 #ifdef PROTO_STR_DH
     str_dh _member(boost::iequals(is_sponsor, "true"), service_id, member_count, request_delay_min, request_delay_max, request_count_target);

@@ -14,6 +14,10 @@ get_subscriber_count() {
     echo $(($1-1))
 }
 
+get_members_up_count_by_unique_ports() {
+    echo $(ss -lup | grep multicast-dh-ex | awk '{print $4}' |  awk -F: '{print $NF}' | grep -v 65000 | sort -u | wc -l)
+}
+
 start() {
     cd /root/c++-multicast/
     /root/c++-multicast/build/statistics-writer-main $2 &
@@ -28,14 +32,12 @@ start() {
         sleep 1
     done
     echo "All subscribers started up"
-    SLEEP_TIME_FOR_PORT_BOUND_ONCE_CHECK=5
-    echo "Sleeping $SLEEP_TIME_FOR_PORT_BOUND_ONCE_CHECK seconds more for port bound once checks"
-    sleep 5
-
+    while [[ $(get_members_up_count_by_unique_ports) < $(get_subscriber_count $2) ]]; do
+        echo "There are still ports bound more than once"
+        sleep 1
+    done
     /root/c++-multicast/build/multicast-dh-example true $1 $2 $3 $4 $5 &
     echo "Initial sponsor is started"
-    sleep 3
-
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
     done
@@ -55,6 +57,14 @@ if [ $# -ne 5 ]; then
     echo "Usage: $0 <service_id> <member_count> <request_delay_min(ms)> <request_delay_max(ms)> <request_count_target>"
     echo "Example: $0 42 20 10 100 10"
     exit 1
+fi
+
+if [[ $1 < 0 ]]; then
+    echo "service id must be positive"
+fi
+
+if [[ $2 < 2 ]]; then
+    echo "member count must be greater 2"
 fi
 
 trap 'on_exit' SIGINT
