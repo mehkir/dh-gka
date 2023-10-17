@@ -27,7 +27,7 @@ start() {
     do
         /root/c++-multicast/build/multicast-dh-example false $1 $2 $3 $4 $5 &
     done
-    while [[ $(get_process_count) != $(get_subscriber_count $2) ]]; do
+    while [[ $(get_process_count) -ne $(get_subscriber_count $2) ]]; do
         echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $2) are up"
         sleep 1
     done
@@ -59,12 +59,16 @@ if [ $# -ne 5 ]; then
     exit 1
 fi
 
-if [[ $1 < 0 ]]; then
+if [[ $1 -lt 0 ]]; then
     echo "service id must be positive"
+    exit 1
 fi
 
-if [[ $2 < 2 ]]; then
+echo $2
+
+if [[ $2 -lt 2 ]]; then
     echo "member count must be greater 2"
+    exit 1
 fi
 
 trap 'on_exit' SIGINT

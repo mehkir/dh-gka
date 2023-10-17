@@ -28,7 +28,7 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
           if(port_not_bound_once) {
             sleep(1);
             unicast_socket_.close();
-            LOG_STD("[<multicast_channel>]: socket was bound at least twice")
+            //LOG_STD("[<multicast_channel>]: socket was bound at least twice")
           }
           // Create the unicast socket and bind it to an open port
           unicast_socket_.open(boost::asio::ip::udp::v4());
