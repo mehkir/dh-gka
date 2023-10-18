@@ -67,6 +67,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
     protected:
     private:
         void process_pending_request();
+        void check_and_add_next_blinded_key_to_group_secret();
         blinded_secret_t get_next_blinded_key();
         std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> get_unassigned_member();
         std::unique_ptr<str_key_tree> build_str_tree(secret_t _group_secret, blinded_secret_t _blinded_group_secret,

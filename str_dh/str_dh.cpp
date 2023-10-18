@@ -148,30 +148,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
-
-    if (!is_sponsor_ && is_assigned()
-        && (keys_computed_count_ + member_id_) == _rcvd_response_message.new_sponsor.assigned_id_
-        && _rcvd_response_message.offered_service_ == service_of_interest_) {
-
-        blinded_secret_t next_blinded_key;
-        while ((next_blinded_key = get_next_blinded_key()).SizeInBytes() != 0) {
-            secret_t old_group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
-            secret_t new_group_secret(diffie_hellman_.AgreedValueLength());
-            diffie_hellman_.Agree(new_group_secret, old_group_secret, next_blinded_key); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
-            std::unique_ptr<str_key_tree> str_tree = build_str_tree(new_group_secret,
-                                                                    DEFAULT_SECRET,
-                                                                    DEFAULT_SECRET,
-                                                                    next_blinded_key);
-            std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
-            str_tree->next_internal_node_ = std::move(previous_str_tree);
-            str_key_tree_map_[service_of_interest_] = std::move(str_tree);
-
-            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1) //+1=blinded group secret
-            LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
-
-            keys_computed_count_++;
-        }
-    }
+    check_and_add_next_blinded_key_to_group_secret();
     process_pending_request();
     contribute_statistics();
 }
@@ -266,6 +243,28 @@ void str_dh::process_pending_request() {
     }
 }
 
+void str_dh::check_and_add_next_blinded_key_to_group_secret() {
+    if (!is_sponsor_ && is_assigned()) {
+        blinded_secret_t next_blinded_key;
+        while ((next_blinded_key = get_next_blinded_key()).SizeInBytes() != 0) {
+            secret_t old_group_secret = str_key_tree_map_[service_of_interest_]->root_node_.group_secret_;
+            secret_t new_group_secret(diffie_hellman_.AgreedValueLength());
+            diffie_hellman_.Agree(new_group_secret, old_group_secret, next_blinded_key); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
+            std::unique_ptr<str_key_tree> str_tree = build_str_tree(new_group_secret,
+                                                                    DEFAULT_SECRET,
+                                                                    DEFAULT_SECRET,
+                                                                    next_blinded_key);
+            std::unique_ptr<str_key_tree> previous_str_tree = std::move(str_key_tree_map_[service_of_interest_]);
+            str_tree->next_internal_node_ = std::move(previous_str_tree);
+            str_key_tree_map_[service_of_interest_] = std::move(str_tree);
+
+            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1) //+1=blinded group secret
+            LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+
+            keys_computed_count_++;
+        }
+    }
+}
 
 std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> str_dh::get_unassigned_member() {
     std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> unassigned_member;
