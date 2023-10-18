@@ -329,7 +329,7 @@ void str_dh::send_cyclic_offer() {
 void str_dh::send_cyclic_response() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-        if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_) {
+        if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_) { // <--- very lazy check, better would be "not_seen_higher_member_id_yet"
             std::unique_ptr<response_message> response = std::make_unique<response_message>(response_message_cache_.operator*());
             send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
             send_cyclic_response();
