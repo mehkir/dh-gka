@@ -25,7 +25,7 @@ start() {
 
     for (( i=0; i<$(get_subscriber_count $2); i++ ))
     do
-        /root/c++-multicast/build/multicast-dh-example false $1 $2 $3 $4 $5 &
+        /root/c++-multicast/build/multicast-dh-example false $1 $2 $3 $4 &
     done
     while [[ $(get_process_count) -ne $(get_subscriber_count $2) ]]; do
         echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $2) are up"
@@ -36,7 +36,7 @@ start() {
         echo "There are still ports bound more than once"
         sleep 1
     done
-    /root/c++-multicast/build/multicast-dh-example true $1 $2 $3 $4 $5 &
+    /root/c++-multicast/build/multicast-dh-example true $1 $2 $3 $4 &
     echo "Initial sponsor is started"
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
@@ -52,10 +52,10 @@ function on_exit() {
     exit 1
 }
 
-if [ $# -ne 5 ]; then
+if [ $# -ne 4 ]; then
     echo "Not enough parameters" 1>&2
-    echo "Usage: $0 <service_id> <member_count> <request_delay_min(ms)> <request_delay_max(ms)> <request_count_target>"
-    echo "Example: $0 42 20 10 100 10"
+    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)>"
+    echo "Example: $0 42 20 10 100"
     exit 1
 fi
 
@@ -74,4 +74,4 @@ fi
 trap 'on_exit' SIGINT
 
 compile
-start $1 $2 $3 $4 $5
+start $1 $2 $3 $4

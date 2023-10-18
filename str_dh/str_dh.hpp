@@ -46,13 +46,11 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<message_handler> message_handler_;
         std::unique_ptr<statistics_recorder> statistics_recorder_;
         std::uint32_t member_count_;
-        std::uint32_t request_count_target_;
-        std::chrono::milliseconds request_delay_; 
-        boost::asio::steady_timer request_timer_;
-        std::uint32_t request_counter_;
+        std::chrono::milliseconds scatter_delay_; 
+        boost::asio::steady_timer scatter_timer_;
     // Methods
     public:
-        str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _request_delay_min, std::uint32_t _request_delay_max, std::uint32_t _request_count_target);
+        str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
         ~str_dh();
         void start();
         virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
@@ -76,7 +74,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::vector<member_id_t> get_unknown_predecessors();
         std::string short_secret_repr(secret_t _secret);
         void contribute_statistics();
-        std::chrono::milliseconds compute_request_delay(std::uint32_t _request_delay_min, std::uint32_t _request_delay_max);
+        std::chrono::milliseconds compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
 };
 
 #endif

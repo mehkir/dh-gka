@@ -8,9 +8,9 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _request_delay_min, std::uint32_t _request_delay_max, std::uint32_t _request_count_target) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), request_count_target_(_request_count_target), request_timer_(multicast_application_impl::get_io_service()), request_counter_(0) {
-    request_delay_ = compute_request_delay(_request_delay_min, _request_delay_max);
-    request_timer_.expires_from_now(request_delay_);
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+    scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
+    scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>] Using default DH")
@@ -65,23 +65,20 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (request_counter_ >= request_count_target_) { request_counter_ = 0;}
     if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
-        request_timer_.expires_from_now(request_delay_);
-        request_timer_.async_wait([this](const boost::system::error_code& _error) {
-            if (!_error && request_counter_ <= request_count_target_ ) {
+        scatter_timer_.expires_from_now(scatter_delay_);
+        scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+            if (!_error) {
                 std::unique_ptr<request_message> request = std::make_unique<request_message>();
                 request->blinded_secret_ = blinded_secret_;
                 request->required_service_ = service_of_interest_;
                 send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
-                request_counter_++;
             }
         });
     }
 }
 
 void str_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    request_counter_++;
     if (!assigned_member_endpoint_map_[_rcvd_request_message.required_service_].contains(_remote_endpoint)
         && !pending_requests_[_rcvd_request_message.required_service_].contains(_remote_endpoint)) {
         pending_requests_[_rcvd_request_message.required_service_][_remote_endpoint] = _rcvd_request_message.blinded_secret_;
@@ -165,7 +162,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
             str_tree->next_internal_node_ = std::move(previous_str_tree);
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1)
+            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1) //+1=blinded group secret
             LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
 
             keys_computed_count_++;
@@ -332,16 +329,16 @@ void str_dh::contribute_statistics() {
     }
 }
 
-std::chrono::milliseconds str_dh::compute_request_delay(std::uint32_t _request_delay_min, std::uint32_t _request_delay_max) {
-    if (_request_delay_min > _request_delay_max) {
-        const std::uint32_t tmp(_request_delay_min);
-        _request_delay_min = _request_delay_max;
-        _request_delay_max = tmp;
+std::chrono::milliseconds str_dh::compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) {
+    if (_scatter_delay_min > _scatter_delay_max) {
+        const std::uint32_t tmp(_scatter_delay_min);
+        _scatter_delay_min = _scatter_delay_max;
+        _scatter_delay_max = tmp;
     }
     std::random_device random_device;
     std::mt19937 mersenne_twister(random_device());
     std::uniform_int_distribution<std::uint32_t> distribution(
-            _request_delay_min, _request_delay_max);
+            _scatter_delay_min, _scatter_delay_max);
     return std::chrono::milliseconds(distribution(mersenne_twister));
 }
 
