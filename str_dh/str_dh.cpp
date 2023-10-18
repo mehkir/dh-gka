@@ -8,7 +8,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), synch_successors_token_(false), request_scheduled_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
@@ -66,7 +66,8 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
+    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_ && !request_scheduled_) {
+        request_scheduled_ = !request_scheduled_;
         scatter_timer_.expires_from_now(scatter_delay_);
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
@@ -74,7 +75,9 @@ void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::u
                 request->blinded_secret_ = blinded_secret_;
                 request->required_service_ = service_of_interest_;
                 send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+                LOG_DEBUG("[<str_dh>]: (process_offer) member_id=" << member_id_ << ", send request")
             }
+            request_scheduled_ = !request_scheduled_;
         });
     }
 }
@@ -191,6 +194,9 @@ void str_dh::process_member_info_response(member_info_response_message _rcvd_mem
     }
     if (is_sponsor_ && all_predecessors_known()) {
         process_pending_request();
+    }
+    if (synch_successors_token_ && all_successors_known()) {
+        // TODO
     }
 }
 
@@ -314,8 +320,18 @@ void str_dh::send_cyclic_response() {
     });
 }
 
-void str_dh::send_cyclic_member_info() {
+void str_dh::send_cyclic_member_info_request_predecessors() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
 
+    });
+}
+
+void str_dh::send_cyclic_member_info_request_successors() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+        
+    });
 }
 
 bool str_dh::is_assigned() {
@@ -323,7 +339,11 @@ bool str_dh::is_assigned() {
 }
 
 bool str_dh::all_predecessors_known() {
-    return assigned_member_endpoint_map_[service_of_interest_].size() >= member_id_-1;
+    return assigned_member_endpoint_map_[service_of_interest_].size() >= member_id_-is_assigned();
+}
+
+bool str_dh::all_successors_known() {
+    return assigned_member_endpoint_map_[service_of_interest_].size() == member_count_-is_assigned();
 }
 
 std::vector<member_id_t> str_dh::get_unknown_predecessors() {

@@ -35,6 +35,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         service_id_t service_of_interest_ = DEFAULT_VALUE;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
+        bool synch_successors_token_;
+        bool request_scheduled_;
         int keys_computed_count_;
         CryptoPP::AutoSeededRandomPool rng_;
         secret_t secret_;
@@ -72,9 +74,11 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send(message& _message);
         void send_cyclic_offer();
         void send_cyclic_response();
-        void send_cyclic_member_info();
+        void send_cyclic_member_info_request_predecessors();
+        void send_cyclic_member_info_request_successors();
         bool is_assigned();
         bool all_predecessors_known();
+        bool all_successors_known();
         std::vector<member_id_t> get_unknown_predecessors();
         std::string short_secret_repr(secret_t _secret);
         void contribute_statistics();
