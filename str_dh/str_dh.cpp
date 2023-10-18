@@ -180,6 +180,7 @@ void str_dh::process_member_info_response(member_info_response_message _rcvd_mem
         process_pending_request();
     }
     if (synch_successors_token_ && all_successors_known()) {
+        // QUATSCH, korrigieren!
         std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
         member_info_req_msg->required_service_ = service_of_interest_;
         member_info_req_msg->requested_members_ = get_unknown_successors();
@@ -324,7 +325,7 @@ void str_dh::send_cyclic_offer() {
 void str_dh::send_cyclic_response() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-        if (!_error && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
+        if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_) {
             send(response_message_cache_.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
             send_cyclic_response();
         }
