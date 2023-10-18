@@ -48,6 +48,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::uint32_t member_count_;
         std::chrono::milliseconds scatter_delay_; 
         boost::asio::steady_timer scatter_timer_;
+        std::unique_ptr<response_message> response_message_cache_;
     // Methods
     public:
         str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);

@@ -222,27 +222,27 @@ void str_dh::process_pending_request() {
                                                                 pending_blinded_secret);
 
         is_sponsor_ = false;
-        std::unique_ptr<response_message> response = std::make_unique<response_message>();
-        response->blinded_group_secret_ = previous_str_tree->root_node_.blinded_group_secret_;
-        response->blinded_sponsor_secret_ = blinded_secret_;
-        response->new_sponsor.assigned_id_ = member_id_+1;
-        response->new_sponsor.ip_address_ = pending_remote_endpoint.address();
-        response->new_sponsor.port_ = pending_remote_endpoint.port();
-        response->new_sponsor.blinded_secret_ = pending_blinded_secret;
-        response->offered_service_ = service_of_interest_;
+        std::unique_ptr<response_message> response_message_cache_ = std::make_unique<response_message>();
+        response_message_cache_->blinded_group_secret_ = previous_str_tree->root_node_.blinded_group_secret_;
+        response_message_cache_->blinded_sponsor_secret_ = blinded_secret_;
+        response_message_cache_->new_sponsor.assigned_id_ = member_id_+1;
+        response_message_cache_->new_sponsor.ip_address_ = pending_remote_endpoint.address();
+        response_message_cache_->new_sponsor.port_ = pending_remote_endpoint.port();
+        response_message_cache_->new_sponsor.blinded_secret_ = pending_blinded_secret;
+        response_message_cache_->offered_service_ = service_of_interest_;
 
         str_tree->next_internal_node_ = std::move(previous_str_tree);
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-        assigned_member_key_map_[service_of_interest_][response->new_sponsor.assigned_id_] = pending_blinded_secret;
-        assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
+        assigned_member_key_map_[service_of_interest_][response_message_cache_->new_sponsor.assigned_id_] = pending_blinded_secret;
+        assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response_message_cache_->new_sponsor.assigned_id_;
 
         keys_computed_count_++;
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
 
-        LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response->new_sponsor.assigned_id_)
-        send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
+        LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response_message_cache_->new_sponsor.assigned_id_)
+        send(response_message_cache_.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
     } else {
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
@@ -295,16 +295,22 @@ void str_dh::send_cyclic_offer() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
-            std::unique_ptr<request_message> request = std::make_unique<request_message>();
-            request->blinded_secret_ = blinded_secret_;
-            request->required_service_ = service_of_interest_;
-            send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+            std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
+            offer->offered_service_ = service_of_interest_;
+            send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
             send_cyclic_offer();
         }
     });
 }
 
 void str_dh::send_cyclic_response() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+        if (!_error && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
+            send(response_message_cache_.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
+            send_cyclic_response();
+        }
+    });
 
 }
 
