@@ -177,12 +177,19 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (is_assigned() && _rcvd_member_info_request_message.required_service_ == service_of_interest_
+    if (is_assigned() && !request_scheduled_ && _rcvd_member_info_request_message.required_service_ == service_of_interest_
         && std::find(_rcvd_member_info_request_message.requested_members_.begin(), _rcvd_member_info_request_message.requested_members_.end(), member_id_) != _rcvd_member_info_request_message.requested_members_.end()) {
-            std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
-            member_info_resp_msg->member_id_ = member_id_;
-            member_info_resp_msg->blinded_secret_ = blinded_secret_;
-            send(member_info_resp_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_RESPONSE_MESSAGE_COUNT_);
+        request_scheduled_ = !request_scheduled_;
+        scatter_timer_.expires_from_now(scatter_delay_);
+        scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+            if (!_error) {
+                request_scheduled_ = !request_scheduled_;
+                std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
+                member_info_resp_msg->member_id_ = member_id_;
+                member_info_resp_msg->blinded_secret_ = blinded_secret_;
+                send(member_info_resp_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_RESPONSE_MESSAGE_COUNT_);
+            }
+        });
     }
 }
 
