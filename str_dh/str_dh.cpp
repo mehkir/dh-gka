@@ -102,7 +102,6 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
     }
     process_pending_request();
-    contribute_statistics();
 }
 
 void str_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -148,9 +147,13 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
         LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
+
+    if (member_id_ == member_count_) {
+        
+        return;
+    }
     check_and_add_next_blinded_key_to_group_secret();
     process_pending_request();
-    contribute_statistics();
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -407,14 +410,14 @@ std::string str_dh::short_secret_repr(secret_t _secret) {
 }
 
 void str_dh::contribute_statistics() {
-    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
-        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
-            if(member_id_ == INITIAL_SPONSOR_ID) {
-                statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
-            }
-            statistics_recorder_->contribute_statistics();
-            multicast_application_impl::stop();
-    }
+    // if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
+    //     && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
+    //         if(member_id_ == INITIAL_SPONSOR_ID) {
+    //             statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
+    //         }
+    //         statistics_recorder_->contribute_statistics();
+    //         multicast_application_impl::stop();
+    // }
 }
 
 std::chrono::milliseconds str_dh::compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) {
