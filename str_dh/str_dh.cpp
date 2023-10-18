@@ -37,6 +37,7 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+        send_cyclic_offer();
     } else {
         keys_computed_count_ = 0;
         std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
@@ -247,6 +248,7 @@ void str_dh::process_pending_request() {
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
         send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+        send_cyclic_offer();
     }
 }
 
@@ -287,6 +289,27 @@ void str_dh::send(message& _message) {
     boost::asio::streambuf buffer;
     message_handler_->serialize(_message, buffer);
     multicast_application_impl::send_multicast(buffer);
+}
+
+void str_dh::send_cyclic_offer() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+        if (!_error && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
+            std::unique_ptr<request_message> request = std::make_unique<request_message>();
+            request->blinded_secret_ = blinded_secret_;
+            request->required_service_ = service_of_interest_;
+            send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+            send_cyclic_offer();
+        }
+    });
+}
+
+void str_dh::send_cyclic_response() {
+
+}
+
+void str_dh::send_cyclic_member_info() {
+
 }
 
 bool str_dh::is_assigned() {

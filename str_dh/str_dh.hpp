@@ -69,6 +69,9 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<str_key_tree> build_str_tree(secret_t _group_secret, blinded_secret_t _blinded_group_secret,
                                                  secret_t _member_secret, blinded_secret_t _blinded_member_secret);
         void send(message& _message);
+        void send_cyclic_offer();
+        void send_cyclic_response();
+        void send_cyclic_member_info();
         bool is_assigned();
         bool all_predecessors_known();
         std::vector<member_id_t> get_unknown_predecessors();
