@@ -8,7 +8,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), synch_successors_token_(false), request_scheduled_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), synch_successors_token_(false), request_scheduled_(false), response_scheduled_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
@@ -154,18 +154,18 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (is_assigned() && !request_scheduled_ && _rcvd_member_info_request_message.required_service_ == service_of_interest_
+    if (is_assigned() && !response_scheduled_ && _rcvd_member_info_request_message.required_service_ == service_of_interest_
         && std::find(_rcvd_member_info_request_message.requested_members_.begin(), _rcvd_member_info_request_message.requested_members_.end(), member_id_) != _rcvd_member_info_request_message.requested_members_.end()) {
-        request_scheduled_ = !request_scheduled_;
+        response_scheduled_ = !response_scheduled_;
         scatter_timer_.expires_from_now(scatter_delay_);
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
-                request_scheduled_ = !request_scheduled_;
                 std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
                 member_info_resp_msg->member_id_ = member_id_;
                 member_info_resp_msg->blinded_secret_ = blinded_secret_;
                 send(member_info_resp_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_RESPONSE_MESSAGE_COUNT_);
             }
+            response_scheduled_ = !response_scheduled_;
         });
     }
 }
@@ -180,7 +180,11 @@ void str_dh::process_member_info_response(member_info_response_message _rcvd_mem
         process_pending_request();
     }
     if (synch_successors_token_ && all_successors_known()) {
-        // TODO
+        std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
+        member_info_req_msg->required_service_ = service_of_interest_;
+        member_info_req_msg->requested_members_ = get_unknown_successors();
+        send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+        send_cyclic_member_info_request_successors();
     }
 }
 
@@ -195,6 +199,7 @@ void str_dh::process_pending_request() {
         member_info_req_msg->required_service_ = service_of_interest_;
         member_info_req_msg->requested_members_ = get_unknown_predecessors();
         send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+        send_cyclic_member_info_request_predecessors();
         return;
     }
 
@@ -307,7 +312,7 @@ void str_dh::send(message& _message) {
 void str_dh::send_cyclic_offer() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-        if (!_error && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
+        if (!_error && is_sponsor_ && assigned_member_key_map_[service_of_interest_].size() < member_id_) {
             std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
             offer->offered_service_ = service_of_interest_;
             send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
@@ -329,14 +334,26 @@ void str_dh::send_cyclic_response() {
 void str_dh::send_cyclic_member_info_request_predecessors() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-
+        if (!_error && !all_predecessors_known()) {
+            std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
+            member_info_req_msg->required_service_ = service_of_interest_;
+            member_info_req_msg->requested_members_ = get_unknown_predecessors();
+            send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+            send_cyclic_member_info_request_predecessors();
+        }
     });
 }
 
 void str_dh::send_cyclic_member_info_request_successors() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-        
+        if (!_error && !all_successors_known()) {
+            std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
+            member_info_req_msg->required_service_ = service_of_interest_;
+            member_info_req_msg->requested_members_ = get_unknown_successors();
+            send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+            send_cyclic_member_info_request_successors();
+        }
     });
 }
 
@@ -360,6 +377,16 @@ std::vector<member_id_t> str_dh::get_unknown_predecessors() {
         }
     }
     return unknown_predecessors;
+}
+
+std::vector<member_id_t> str_dh::get_unknown_successors() {
+    std::vector<member_id_t> unknown_successors;
+    for (uint32_t i = member_id_+1; i <= member_count_; i++) {
+        if (!assigned_member_key_map_[service_of_interest_].contains(i)) {
+            unknown_successors.push_back(i);
+        }
+    }
+    return unknown_successors;
 }
 
 std::string str_dh::short_secret_repr(secret_t _secret) {

@@ -37,6 +37,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         bool is_sponsor_;
         bool synch_successors_token_;
         bool request_scheduled_;
+        bool response_scheduled_;
         int keys_computed_count_;
         CryptoPP::AutoSeededRandomPool rng_;
         secret_t secret_;
@@ -81,6 +82,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         bool all_predecessors_known();
         bool all_successors_known();
         std::vector<member_id_t> get_unknown_predecessors();
+        std::vector<member_id_t> get_unknown_successors();
         std::string short_secret_repr(secret_t _secret);
         void contribute_statistics();
         std::chrono::milliseconds compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
