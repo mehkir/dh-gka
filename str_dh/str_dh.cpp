@@ -243,6 +243,7 @@ void str_dh::process_pending_request() {
 
         LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response_message_cache_->new_sponsor.assigned_id_)
         send(response_message_cache_.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
+        send_cyclic_response();
     } else {
         LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
@@ -311,7 +312,6 @@ void str_dh::send_cyclic_response() {
             send_cyclic_response();
         }
     });
-
 }
 
 void str_dh::send_cyclic_member_info() {
