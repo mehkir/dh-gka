@@ -121,9 +121,9 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 
     bool become_sponsor = get_local_endpoint() == new_sponsor_endpoint;
 
-    if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
-        std::cerr << "[<str_dh>]: (process_response) Already assigned with member_id=" << member_id_ << ", member_id from message=" << _rcvd_response_message.new_sponsor.assigned_id_ << std::endl;
-    }
+    // if (is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
+    //     std::cerr << "[<str_dh>]: (process_response) Already assigned with member_id=" << member_id_ << ", member_id from message=" << _rcvd_response_message.new_sponsor.assigned_id_ << std::endl;
+    // }
 
     if (!is_assigned() && become_sponsor && _rcvd_response_message.offered_service_ == service_of_interest_) {
         is_sponsor_ = true;
@@ -165,7 +165,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
             str_tree->next_internal_node_ = std::move(previous_str_tree);
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_)
+            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1)
             LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
 
             keys_computed_count_++;
