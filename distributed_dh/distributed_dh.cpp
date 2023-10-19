@@ -153,3 +153,15 @@ void distributed_dh::process_member_info_request(member_info_request_message _rc
 void distributed_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     // Unused, just here to comply with key_agreement_protocol
 }
+
+void distributed_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void distributed_dh::process_member_info_synch_request(member_info_synch_request_message _rcvd_member_info_synch_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void distributed_dh::process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
