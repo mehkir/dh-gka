@@ -128,6 +128,18 @@ void tg_dh::process_member_info_response(member_info_response_message _rcvd_memb
     // Unused, just here to comply with key_agreement_protocol
 }
 
+void tg_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void tg_dh::process_member_info_synch_request(member_info_synch_request_message _rcvd_member_info_synch_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
+void tg_dh::process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    // Unused, just here to comply with key_agreement_protocol
+}
+
 void tg_dh::process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     // Unused, just here to comply with key_agreement_protocol
 }
@@ -162,6 +174,14 @@ void tg_dh::process_pending_request() {
     } else {
         LOG_DEBUG("Send offer (not implemented yet)")
     }
+}
+
+blinded_secret_t tg_dh::get_next_blinded_key() {
+    blinded_secret_t blinded_key;
+    if (assigned_member_key_map_[service_of_interest_].contains(keys_computed_count_ + member_id_)) {
+        blinded_key = assigned_member_key_map_[service_of_interest_][keys_computed_count_ + member_id_];
+    }
+    return blinded_key;  
 }
 
 void tg_dh::send(message& _message) {
