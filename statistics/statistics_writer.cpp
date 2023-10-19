@@ -26,6 +26,7 @@ statistics_writer::statistics_writer() {
     count_metric_names_[count_metric::RESPONSE_MESSAGE_COUNT_] = RESPONSE_MESSAGE_COUNT;
     count_metric_names_[count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_] = MEMBER_INFO_REQUEST_MESSAGE_COUNT;
     count_metric_names_[count_metric::MEMBER_INFO_RESPONSE_MESSAGE_COUNT_] = MEMBER_INFO_RESPONSE_MESSAGE_COUNT;
+    count_metric_names_[count_metric::SYNCH_TOKEN_MESSAGE_COUNT_] = SYNCH_TOKEN_MESSAGE_COUNT;
     count_metric_names_[count_metric::CRYPTO_OPERATIONS_COUNT_] = CRYPTO_OPERATIONS_COUNT;
     time_metric_names_[time_metric::DURATION_START_] = DURATION_START;
     time_metric_names_[time_metric::DURATION_END_] = DURATION_END;
