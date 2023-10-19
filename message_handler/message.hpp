@@ -27,6 +27,9 @@ enum message_type {
     RESPONSE,
     MEMBER_INFO_REQUEST,
     MEMBER_INFO_RESPONSE,
+    SYNCH_TOKEN,
+    MEMBER_INFO_SYNCH_REQUEST,
+    MEMBER_INFO_SYNCH_RESPONSE,
     DISTRIBUTED_RESPONSE
 };
 
@@ -327,6 +330,44 @@ struct member_info_response_message : offer_message {
             ar & boost::serialization::base_object<offer_message>(*this);
             ar & member_id_;
             ar & blinded_secret_bytes_;
+        }
+};
+
+struct synch_token_message : message {
+    public:
+        synch_token_message() {
+            message_type_ = message_type::SYNCH_TOKEN;
+        }
+        member_id_t member_id_;
+    protected:
+        virtual void write_to_archive(boost::archive::binary_oarchive& _oarchive) override {
+            _oarchive << *this;
+        }
+
+        virtual void read_from_archive(boost::archive::binary_iarchive& _iarchive) override {
+            _iarchive >> *this;
+        }
+    private:
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<message>(*this);
+            ar & member_id_;
+        }
+};
+
+struct member_info_synch_request_message : member_info_request_message {
+    public:
+        member_info_synch_request_message() {
+            message_type_ = message_type::MEMBER_INFO_SYNCH_REQUEST;
+        }
+};
+
+struct member_info_synch_response_message : member_info_response_message {
+    public:
+        member_info_synch_response_message() {
+            message_type_ = message_type::MEMBER_INFO_SYNCH_RESPONSE;
         }
 };
 
