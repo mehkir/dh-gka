@@ -35,9 +35,12 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         service_id_t service_of_interest_ = DEFAULT_VALUE;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
-        bool synch_successors_token_;
         bool request_scheduled_;
         bool response_scheduled_;
+        bool higher_member_id_synching_;
+        bool higher_member_id_assigned_;
+        bool synch_token_rcvd_;
+        bool synch_finished_;
         int keys_computed_count_;
         CryptoPP::AutoSeededRandomPool rng_;
         secret_t secret_;
@@ -64,6 +67,9 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         virtual void process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_synch_token(synch_token_message _rcvd_synch_token_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_member_info_synch_request(member_info_synch_request_message _rcvd_member_info_synch_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     protected:
     private:
@@ -77,7 +83,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send_cyclic_offer();
         void send_cyclic_response();
         void send_cyclic_member_info_request_predecessors();
-        void send_cyclic_member_info_request_successors();
+        void send_cyclic_member_info_synch_request_successors();
+        void send_cyclic_synch_token();
         bool is_assigned();
         bool all_predecessors_known();
         bool all_successors_known();
@@ -86,6 +93,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::string short_secret_repr(secret_t _secret);
         void contribute_statistics();
         std::chrono::milliseconds compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
+        template <typename T, typename R> void process_member_info_request_(T _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint);
+        template <typename T> void process_member_info_response_(T _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint);
 };
 
 #endif

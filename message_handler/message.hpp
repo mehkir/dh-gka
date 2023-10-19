@@ -91,10 +91,11 @@ static boost::asio::ip::address_v4 get_byte_vector_as_ipv4_address(std::vector<u
 
 struct message {
     public:
+        message_id_t message_type_;
         message() {
             message_type_ = message_type::NONE;
         }
-        message_id_t message_type_;
+
         virtual void serialize_(boost::asio::streambuf& _buffer) {
             make_members_serializable();
             std::ostream oss(&_buffer);

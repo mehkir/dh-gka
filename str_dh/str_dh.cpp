@@ -8,7 +8,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), synch_successors_token_(false), request_scheduled_(false), response_scheduled_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false),service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
@@ -66,6 +66,11 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (is_assigned() && !higher_member_id_assigned_ && 
+        (assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint) && assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] > (member_id_ % member_count_)
+        || !assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint))) {
+        higher_member_id_assigned_ = true;
+    }
     if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_ && !request_scheduled_) {
         request_scheduled_ = !request_scheduled_;
         scatter_timer_.expires_from_now(scatter_delay_);
@@ -75,7 +80,7 @@ void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::u
                 request->blinded_secret_ = blinded_secret_;
                 request->required_service_ = service_of_interest_;
                 send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
-                LOG_DEBUG("[<str_dh>]: (process_offer) member_id=" << member_id_ << ", send request")
+                // LOG_DEBUG("[<str_dh>]: (process_offer) member_id=" << member_id_ << ", send request")
             }
             request_scheduled_ = !request_scheduled_;
         });
@@ -144,12 +149,19 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
         keys_computed_count_++;
-        LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
-        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+        // LOG_DEBUG("[<str_dh>]: (become_sponsor) Compute group key with blinded group secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        // LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
 
-    if (member_id_ == member_count_) {
-        
+    if (member_id_ == member_count_ && is_sponsor_) {
+        is_sponsor_ = false;
+        synch_token_rcvd_ = true;
+        higher_member_id_assigned_ = true;
+        synch_finished_ = true;
+        std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
+        synch_token_msg->member_id_ = 1;
+        send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+        send_cyclic_synch_token();
         return;
     }
     check_and_add_next_blinded_key_to_group_secret();
@@ -157,13 +169,72 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (is_assigned() && !higher_member_id_assigned_ && 
+        (assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint) && assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] > (member_id_ % member_count_)
+        || !assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint))) {
+        higher_member_id_assigned_ = true;
+    }
+    process_member_info_request_<member_info_request_message, member_info_response_message>(_rcvd_member_info_request_message, _remote_endpoint);
+}
+
+void str_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    process_member_info_response_<member_info_response_message>(_rcvd_member_info_response_message, _remote_endpoint);
+    if (is_sponsor_ && all_predecessors_known()) {
+        process_pending_request();
+    }
+}
+
+void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    higher_member_id_assigned_ = true;
+    if (!higher_member_id_synching_ && _rcvd_synch_token_message.member_id_ > (member_id_ % member_count_)) { higher_member_id_synching_ = true; }
+    bool synch = !synch_token_rcvd_ && _rcvd_synch_token_message.member_id_ == member_id_;
+    if (synch && !all_successors_known()) {
+        synch_token_rcvd_ = true;
+        std::unique_ptr<member_info_synch_request_message> member_info_synch_req_msg = std::make_unique<member_info_synch_request_message>();
+        member_info_synch_req_msg->required_service_ = service_of_interest_;
+        member_info_synch_req_msg->requested_members_ = get_unknown_successors();
+        send(member_info_synch_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+        send_cyclic_member_info_synch_request_successors();
+    } else if (synch && all_successors_known()) {
+        synch_token_rcvd_ = true;
+        synch_finished_ = true;
+        std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
+        synch_token_msg->member_id_ = member_id_ + 1;
+        send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+        send_cyclic_synch_token();
+    }
+    if (member_id_ == member_count_) {
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", everyone is finished!")
+    }
+}
+
+void str_dh::process_member_info_synch_request(member_info_synch_request_message _rcvd_member_info_synch_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    higher_member_id_assigned_ = true;
+    if (!higher_member_id_synching_ && assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint) && assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] > (member_id_ % member_count_)) { higher_member_id_synching_ = true; }
+    process_member_info_request_<member_info_synch_request_message, member_info_synch_response_message>(_rcvd_member_info_synch_request_message, _remote_endpoint);
+}
+
+void str_dh::process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    higher_member_id_assigned_ = true;
+    process_member_info_response_<member_info_synch_response_message>(_rcvd_member_info_synch_response_message, _remote_endpoint);
+    if (all_successors_known() && !synch_finished_) {
+        check_and_add_next_blinded_key_to_group_secret();
+        synch_finished_ = true;
+        std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
+        synch_token_msg->member_id_ = member_id_ + 1;
+        send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+        send_cyclic_synch_token();
+    }
+}
+
+template<typename T, typename R> void str_dh::process_member_info_request_(T _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     if (is_assigned() && !response_scheduled_ && _rcvd_member_info_request_message.required_service_ == service_of_interest_
         && std::find(_rcvd_member_info_request_message.requested_members_.begin(), _rcvd_member_info_request_message.requested_members_.end(), member_id_) != _rcvd_member_info_request_message.requested_members_.end()) {
         response_scheduled_ = !response_scheduled_;
         scatter_timer_.expires_from_now(scatter_delay_);
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
-                std::unique_ptr<member_info_response_message> member_info_resp_msg = std::make_unique<member_info_response_message>();
+                std::unique_ptr<R> member_info_resp_msg = std::make_unique<R>();
                 member_info_resp_msg->offered_service_ = service_of_interest_;
                 member_info_resp_msg->member_id_ = member_id_;
                 member_info_resp_msg->blinded_secret_ = blinded_secret_;
@@ -174,22 +245,11 @@ void str_dh::process_member_info_request(member_info_request_message _rcvd_membe
     }
 }
 
-void str_dh::process_member_info_response(member_info_response_message _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+template<typename T> void str_dh::process_member_info_response_(T _rcvd_member_info_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     if (!assigned_member_endpoint_map_[_rcvd_member_info_response_message.offered_service_].contains(_remote_endpoint)) {
         assigned_member_key_map_[_rcvd_member_info_response_message.offered_service_][_rcvd_member_info_response_message.member_id_] = _rcvd_member_info_response_message.blinded_secret_;
         assigned_member_endpoint_map_[_rcvd_member_info_response_message.offered_service_][_remote_endpoint] = _rcvd_member_info_response_message.member_id_;
         pending_requests_[_rcvd_member_info_response_message.offered_service_].erase(_remote_endpoint);
-    }
-    if (is_sponsor_ && all_predecessors_known()) {
-        process_pending_request();
-    }
-    if (synch_successors_token_ && all_successors_known()) {
-        // QUATSCH, korrigieren!
-        std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
-        member_info_req_msg->required_service_ = service_of_interest_;
-        member_info_req_msg->requested_members_ = get_unknown_successors();
-        send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
-        send_cyclic_member_info_request_successors();
     }
 }
 
@@ -199,7 +259,7 @@ void str_dh::process_pending_request() {
     }
 
     if (!all_predecessors_known()) {
-        LOG_DEBUG("[<str_dh>]: (process_pending_request) Request predecessors")
+        // LOG_DEBUG("[<str_dh>]: (process_pending_request) Request predecessors")
         std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
         member_info_req_msg->required_service_ = service_of_interest_;
         member_info_req_msg->requested_members_ = get_unknown_predecessors();
@@ -241,14 +301,14 @@ void str_dh::process_pending_request() {
         assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] = response->new_sponsor.assigned_id_;
 
         keys_computed_count_++;
-        LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
-        LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+        // LOG_DEBUG("[<str_dh>]: (process_pending_request) Compute group key with blinded secret from member_id=" << assigned_member_endpoint_map_[service_of_interest_][pending_remote_endpoint] << ", keys_computed=" << keys_computed_count_)
+        // LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
 
-        LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response->new_sponsor.assigned_id_)
+        // LOG_STD("[<str_dh>]: (sending_response) member_id=" << member_id_ << ", local_endpoint=(" << get_local_endpoint().address() << ", " << get_local_endpoint().port() << "), remote_endpoint=(" << pending_remote_endpoint.address() << "," << pending_remote_endpoint.port() << "), new_sponsor.assigned_id=" << response->new_sponsor.assigned_id_)
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
         send_cyclic_response();
     } else {
-        LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
+        // LOG_DEBUG("[<str_dh>]: (process_pending_request) Send offer")
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
         send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
@@ -271,8 +331,8 @@ void str_dh::check_and_add_next_blinded_key_to_group_secret() {
             str_tree->next_internal_node_ = std::move(previous_str_tree);
             str_key_tree_map_[service_of_interest_] = std::move(str_tree);
 
-            LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1) //+1=blinded group secret
-            LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
+            // LOG_DEBUG("[<str_dh>]: (no sponsor and assigned) Compute group key with blinded group secret from member_id=" << keys_computed_count_ + member_id_ << ", keys_computed=" << keys_computed_count_ + 1) //+1=blinded group secret
+            // LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
 
             keys_computed_count_++;
         }
@@ -332,10 +392,11 @@ void str_dh::send_cyclic_offer() {
 void str_dh::send_cyclic_response() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-        if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_) { // <--- very lazy check, better would be "not_seen_higher_member_id_yet"
+        if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_ && !higher_member_id_assigned_) {
             std::unique_ptr<response_message> response = std::make_unique<response_message>(response_message_cache_.operator*());
             send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
             send_cyclic_response();
+            LOG_DEBUG("[<str_dh>]: (send_cyclic_response) member_id=" << member_id_ << ", assigned maps=" << assigned_member_key_map_[service_of_interest_].size() << "/" << assigned_member_endpoint_map_[service_of_interest_].size())
         }
     });
 }
@@ -353,15 +414,29 @@ void str_dh::send_cyclic_member_info_request_predecessors() {
     });
 }
 
-void str_dh::send_cyclic_member_info_request_successors() {
+void str_dh::send_cyclic_member_info_synch_request_successors() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && !all_successors_known()) {
-            std::unique_ptr<member_info_request_message> member_info_req_msg = std::make_unique<member_info_request_message>();
-            member_info_req_msg->required_service_ = service_of_interest_;
-            member_info_req_msg->requested_members_ = get_unknown_successors();
-            send(member_info_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
-            send_cyclic_member_info_request_successors();
+            std::unique_ptr<member_info_synch_request_message> member_info_synch_req_msg = std::make_unique<member_info_synch_request_message>();
+            member_info_synch_req_msg->required_service_ = service_of_interest_;
+            member_info_synch_req_msg->requested_members_ = get_unknown_successors();
+            send(member_info_synch_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
+            send_cyclic_member_info_synch_request_successors();
+            LOG_DEBUG("[<str_dh>]: (send_cyclic_member_info_synch_request_successors) member_id=" << member_id_ << ", missing members count=" << member_info_synch_req_msg->requested_members_.size())
+        }
+    });
+}
+
+void str_dh::send_cyclic_synch_token() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+        if (!_error && !higher_member_id_synching_) {
+            std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
+            synch_token_msg->member_id_ = member_id_ + 1;
+            send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+            send_cyclic_synch_token();
+            LOG_DEBUG("[<str_dh>]: (send_cyclic_synch_token) member_id=" << member_id_)
         }
     });
 }
