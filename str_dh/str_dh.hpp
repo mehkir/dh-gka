@@ -37,6 +37,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         bool higher_member_id_assigned_;
         bool synch_token_rcvd_;
         bool synch_finished_;
+        bool last_member_synch_token_sending_triggered_;
         int keys_computed_count_;
         CryptoPP::AutoSeededRandomPool rng_;
         secret_t secret_;
@@ -67,6 +68,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         virtual void process_member_info_synch_request(member_info_synch_request_message _rcvd_member_info_synch_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
         virtual void process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_finish(finish_message _rcvd_finish_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
+        virtual void process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     protected:
     private:
         void process_pending_request();
@@ -86,6 +89,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send_cyclic_synch_token();
         void send_synch_token_to_next_member();
         bool is_assigned();
+        bool is_last_member();
         bool all_predecessors_known();
         bool all_successors_known();
         std::vector<member_id_t> get_unknown_predecessors();

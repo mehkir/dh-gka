@@ -8,7 +8,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false),service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false), last_member_synch_token_sending_triggered_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
@@ -149,11 +149,11 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         // LOG_DEBUG("[<str_dh>]: assigned id=" << member_id_ << ", group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " of service " << service_of_interest_)
     }
 
-    if (member_id_ == member_count_ && is_sponsor_ && !synch_token_rcvd_) {
+    if (is_last_member() && !last_member_synch_token_sending_triggered_) {
+        last_member_synch_token_sending_triggered_ = true;
         is_sponsor_ = false;
-        synch_token_rcvd_ = true;
-        higher_member_id_assigned_ = true;
         synch_finished_ = true;
+        higher_member_id_assigned_ = true;
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
         return;
@@ -177,7 +177,7 @@ void str_dh::process_member_info_response(member_info_response_message _rcvd_mem
 void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     higher_member_id_assigned_ = true;
     if (!higher_member_id_synching_ && _rcvd_synch_token_message.member_id_ > (member_id_ % member_count_)) { higher_member_id_synching_ = true; }
-    bool synch = !synch_token_rcvd_ && _rcvd_synch_token_message.member_id_ == member_id_;
+    bool synch = !synch_token_rcvd_ && _rcvd_synch_token_message.member_id_ == member_id_ && !is_last_member();
     if (synch && !all_successors_known()) {
         synch_token_rcvd_ = true;
         send_member_info_synch_request_successors();
@@ -189,9 +189,9 @@ void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, 
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
     }
-    if (_rcvd_synch_token_message.member_id_ == member_count_ && member_id_ == member_count_) {
-        // LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", everyone is finished!")
-        // TODO Think about ending evaluation and informing all here ...
+    if (_rcvd_synch_token_message.member_id_ == member_count_ && is_last_member() && !synch_token_rcvd_) {
+        synch_token_rcvd_ = true;
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " Should send finish message here")
     }
 }
 
@@ -237,6 +237,14 @@ template<typename T> void str_dh::process_member_info_response_(T _rcvd_member_i
         pending_requests_[_rcvd_member_info_response_message.offered_service_].erase(_remote_endpoint);
         check_and_add_next_blinded_key_to_group_secret();
     }
+}
+
+void str_dh::process_finish(finish_message _rcvd_finish_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+
+}
+
+void str_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+
 }
 
 void str_dh::process_pending_request() {
@@ -436,6 +444,10 @@ void str_dh::send_synch_token_to_next_member() {
 
 bool str_dh::is_assigned() {
     return member_id_ != DEFAULT_MEMBER_ID;
+}
+
+bool str_dh::is_last_member() {
+    return member_id_ == member_count_;
 }
 
 bool str_dh::all_predecessors_known() {
