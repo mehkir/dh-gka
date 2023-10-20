@@ -420,26 +420,12 @@ struct finish_message : message {
         finish_message() {
             message_type_ = message_type::FINISH;
         }
-    private:
-        // Serialization
-        friend class boost::serialization::access;
-        template<class Archive>
-        void serialize(Archive& ar, const unsigned int version) {
-            ar & boost::serialization::base_object<message>(*this);
-        }
 };
 
 struct finish_ack_message : message {
     public:
         finish_ack_message() {
             message_type_ = message_type::FINISH_ACK;
-        }
-    private:
-        // Serialization
-        friend class boost::serialization::access;
-        template<class Archive>
-        void serialize(Archive& ar, const unsigned int version) {
-            ar & boost::serialization::base_object<message>(*this);
         }
 };
 
