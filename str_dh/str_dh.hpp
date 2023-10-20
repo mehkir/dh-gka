@@ -88,6 +88,8 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         void send_member_info_synch_request_successors();
         void send_cyclic_synch_token();
         void send_synch_token_to_next_member();
+        void send_cyclic_finish();
+        void send_finish();
         bool is_assigned();
         bool is_last_member();
         bool all_predecessors_known();

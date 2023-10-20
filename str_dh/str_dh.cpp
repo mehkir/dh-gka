@@ -191,7 +191,9 @@ void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, 
     }
     if (_rcvd_synch_token_message.member_id_ == member_count_ && is_last_member() && !synch_token_rcvd_) {
         synch_token_rcvd_ = true;
-        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " Should send finish message here")
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " Sending finish message")
+        send_finish();
+        send_cyclic_finish();
     }
 }
 
@@ -440,6 +442,21 @@ void str_dh::send_synch_token_to_next_member() {
     std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
     synch_token_msg->member_id_ = member_id_ != member_count_ ? member_id_ + 1 : 1;
     send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+}
+
+void str_dh::send_cyclic_finish() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+    if (!_error) {
+            send_finish();
+            send_cyclic_finish();
+        }
+    });
+}
+
+void str_dh::send_finish() {
+    std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
+    send(finish.operator*()); statistics_recorder_->record_count(count_metric::FINISH_MESSAGE_COUNT_);
 }
 
 bool str_dh::is_assigned() {

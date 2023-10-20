@@ -9,6 +9,7 @@
 #define MEMBER_INFO_REQUEST_MESSAGE_COUNT       "MEMBER_INFO_REQUEST_MESSAGE_COUNT"
 #define MEMBER_INFO_RESPONSE_MESSAGE_COUNT      "MEMBER_INFO_RESPONSE_MESSAGE_COUNT"
 #define SYNCH_TOKEN_MESSAGE_COUNT               "SYNCH_TOKEN_MESSAGE_COUNT"
+#define FINISH_MESSAGE_COUNT                    "FINISH_MESSAGE_COUNT"
 #define CRYPTO_OPERATIONS_COUNT                 "CRYPTO_OPERATIONS_COUNT"
 #define DURATION_START                          "DURATION_START"
 #define DURATION_END                            "DURATION_END"
@@ -34,10 +35,10 @@
 #include <functional>
 #include <utility>
 
-typedef int      metric_id;
+typedef uint32_t metric_id;
 typedef uint64_t metric_value;
 
-typedef int       key_type;
+typedef uint32_t  key_type;
 typedef uint64_t  mapped_type;
 typedef std::pair<const int, uint64_t> ValueType;
 typedef boost::interprocess::allocator<ValueType, boost::interprocess::managed_shared_memory::segment_manager> shmem_allocator;
@@ -52,6 +53,7 @@ enum count_metric {
     MEMBER_INFO_REQUEST_MESSAGE_COUNT_,
     MEMBER_INFO_RESPONSE_MESSAGE_COUNT_,
     SYNCH_TOKEN_MESSAGE_COUNT_,
+    FINISH_MESSAGE_COUNT_,
     CRYPTO_OPERATIONS_COUNT_,
     COUNT_SIZE = CRYPTO_OPERATIONS_COUNT_+1
 };
