@@ -8,7 +8,7 @@
 
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
-str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false), last_member_synch_token_sending_triggered_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
+str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false), last_member_synch_token_sending_triggered_(false), finish_message_rcvd_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
@@ -242,11 +242,53 @@ template<typename T> void str_dh::process_member_info_response_(T _rcvd_member_i
 }
 
 void str_dh::process_finish(finish_message _rcvd_finish_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (member_id_ == INITIAL_SPONSOR_ID && !finish_message_rcvd_) {
+        statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
+    }
 
+    finish_message_rcvd_ = true;
+    higher_member_id_assigned_ = true;
+    higher_member_id_synching_ = true;
+
+    if (member_id_ != INITIAL_SPONSOR_ID) {
+        scatter_timer_.cancel();
+    }
+
+    if (assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] == INITIAL_SPONSOR_ID) {
+        std::unique_ptr<finish_ack_message> finish_ack = std::make_unique<finish_ack_message>();
+        send(finish_ack.operator*()); // Message is not counted, since its only for acking to be triggered to contribute statistics and shut down
+        contribute_statistics();
+    }
+
+    if (member_id_ == INITIAL_SPONSOR_ID) {
+        std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
+        send(finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
+        scatter_timer_.expires_from_now(std::chrono::milliseconds(scatter_delay_));
+        scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+            std::unique_ptr<finish_message> cyclic_finish = std::make_unique<finish_message>();
+            send(cyclic_finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
+            std::unique_ptr<finish_message> self_finish = std::make_unique<finish_message>();
+            process_finish(self_finish.operator*(), get_local_endpoint());
+        });
+    }
 }
 
 void str_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    higher_member_id_assigned_ = true;
+    higher_member_id_synching_ = true;
+    if (member_id_ != INITIAL_SPONSOR_ID) {
+        scatter_timer_.cancel();
+    }
 
+    if (member_id_ == INITIAL_SPONSOR_ID) {
+        std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
+        send(finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
+        uint8_t timeout = 60;
+        scatter_timer_.expires_from_now(std::chrono::seconds(timeout));
+        scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+            contribute_statistics();
+        });
+    }
 }
 
 void str_dh::process_pending_request() {
@@ -447,7 +489,7 @@ void str_dh::send_synch_token_to_next_member() {
 void str_dh::send_cyclic_finish() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
-    if (!_error) {
+        if (!_error) {
             send_finish();
             send_cyclic_finish();
         }
@@ -521,14 +563,11 @@ std::string str_dh::short_secret_repr(secret_t _secret) {
 }
 
 void str_dh::contribute_statistics() {
-    // if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
-    //     && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_)) {
-    //         if(member_id_ == INITIAL_SPONSOR_ID) {
-    //             statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
-    //         }
-    //         statistics_recorder_->contribute_statistics();
-    //         multicast_application_impl::stop();
-    // }
+    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
+        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_) && ( member_count_ - member_id_ + 1 == keys_computed_count_ )) {
+            statistics_recorder_->contribute_statistics();
+            multicast_application_impl::stop();
+    }
 }
 
 std::chrono::milliseconds str_dh::compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) {

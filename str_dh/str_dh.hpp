@@ -38,6 +38,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         bool synch_token_rcvd_;
         bool synch_finished_;
         bool last_member_synch_token_sending_triggered_;
+        bool finish_message_rcvd_;
         int keys_computed_count_;
         CryptoPP::AutoSeededRandomPool rng_;
         secret_t secret_;
