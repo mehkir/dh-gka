@@ -35,10 +35,10 @@
 #include <functional>
 #include <utility>
 
-typedef uint32_t metric_id;
+typedef int metric_id;
 typedef uint64_t metric_value;
 
-typedef uint32_t  key_type;
+typedef int  key_type;
 typedef uint64_t  mapped_type;
 typedef std::pair<const int, uint64_t> ValueType;
 typedef boost::interprocess::allocator<ValueType, boost::interprocess::managed_shared_memory::segment_manager> shmem_allocator;
