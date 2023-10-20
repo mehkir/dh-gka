@@ -59,15 +59,15 @@ if [ $# -ne 4 ]; then
     exit 1
 fi
 
-if [[ $1 -lt 0 ]]; then
-    echo "service id must be positive"
+if [[ $1 -lt 1 ]]; then
+    echo "service id must be greater than 0"
     exit 1
 fi
 
 echo $2
 
-if [[ $2 -lt 2 ]]; then
-    echo "member count must be greater 2"
+if [[ $2 -lt 1 ]]; then
+    echo "member count must be greater than 1"
     exit 1
 fi
 

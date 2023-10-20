@@ -24,6 +24,11 @@ int main(int argc, char* argv[]) {
       return 1;
     }
 
+    if (service_id < 1) {
+      std::cerr << "service id must be greater than 0\n";
+      return 1;      
+    }
+
     if (member_count < 2) {
       std::cerr << "service id must be greater than 1\n";
       return 1;
