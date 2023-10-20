@@ -185,7 +185,7 @@ void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, 
     } else if (synch && all_successors_known()) {
         synch_token_rcvd_ = true;
         synch_finished_ = true;
-        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. Sending synch token to next member") // TODO For passive members who got their map filled by synch messages, have to calculate keys here!
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " Sending synch token to next member")
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
     }
@@ -206,7 +206,7 @@ void str_dh::process_member_info_synch_response(member_info_synch_response_messa
     process_member_info_response_<member_info_synch_response_message>(_rcvd_member_info_synch_response_message, _remote_endpoint);
     if (all_successors_known() && !synch_finished_ && synch_token_rcvd_) {
         synch_finished_ = true;
-        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. Sending synch token to next member")
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. group secret=" << short_secret_repr(str_key_tree_map_[service_of_interest_]->root_node_.group_secret_) << " Sending synch token to next member")
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
     }
