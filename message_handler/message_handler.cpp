@@ -60,8 +60,9 @@ void message_handler::deserialize_and_callback(unsigned char* _data, size_t _byt
     case message_type::FINISH_ACK: {
         process_finish_ack(buffer, _remote_endpoint);
     }
+        break;
     default:
-        std::cerr << "Unknown message type received" << std::endl;
+        std::cerr << "[<message_handler>]: Unknown message type received" << std::endl;
         break;
     }
 }
