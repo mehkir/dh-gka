@@ -15,11 +15,7 @@
 #include <set>
 #include <tuple>
 
-#define DEFAULT_MEMBER_ID -1
-#define DEFAULT_VALUE -1
 #define INITIAL_SPONSOR_ID 1
-#define DEFAULT_SECRET CryptoPP::SecByteBlock()
-#define CYCLIC_OFFER_SECONDS 1
 
 class str_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
@@ -32,7 +28,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         CryptoPP::ECDH<CryptoPP::ECP>::Domain diffie_hellman_;
 #endif
         std::mutex receive_mutex_;
-        service_id_t service_of_interest_ = DEFAULT_VALUE;
+        service_id_t service_of_interest_ = DEFAULT_SERVICE_ID;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
         bool request_scheduled_;

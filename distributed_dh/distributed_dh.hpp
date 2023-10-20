@@ -13,12 +13,6 @@
 #include <set>
 #include <tuple>
 
-#define DEFAULT_MEMBER_ID -1
-#define DEFAULT_VALUE -1
-
-typedef CryptoPP::SecByteBlock blinded_secret_t;
-typedef CryptoPP::SecByteBlock secret_t;
-
 class distributed_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
     public:
@@ -30,7 +24,7 @@ class distributed_dh : public key_agreement_protocol, public multicast_applicati
         CryptoPP::ECDH<CryptoPP::ECP>::Domain diffie_hellman_;
 #endif
         std::mutex receive_mutex_;
-        service_id_t service_of_interest_ = DEFAULT_VALUE;
+        service_id_t service_of_interest_ = DEFAULT_SERVICE_ID;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
         CryptoPP::AutoSeededRandomPool rnd_;

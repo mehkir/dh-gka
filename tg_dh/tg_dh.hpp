@@ -13,20 +13,13 @@
 #include <set>
 #include <tuple>
 
-#define DEFAULT_MEMBER_ID -1
-#define DEFAULT_VALUE -1
-#define DEFAULT_SECRET CryptoPP::SecByteBlock()
-
-typedef CryptoPP::SecByteBlock blinded_secret_t;
-typedef CryptoPP::SecByteBlock secret_t;
-
 class tg_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
     public:
     protected:
     private:
         std::mutex receive_mutex_;
-        service_id_t service_of_interest_ = DEFAULT_VALUE;
+        service_id_t service_of_interest_ = DEFAULT_SERVICE_ID;
         member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
         int keys_computed_count_;
