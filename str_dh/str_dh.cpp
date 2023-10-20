@@ -206,7 +206,6 @@ void str_dh::process_member_info_synch_response(member_info_synch_response_messa
     process_member_info_response_<member_info_synch_response_message>(_rcvd_member_info_synch_response_message, _remote_endpoint);
     if (all_successors_known() && !synch_finished_ && synch_token_rcvd_) {
         synch_finished_ = true;
-        check_and_add_next_blinded_key_to_group_secret();
         LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. Sending synch token to next member")
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
@@ -236,6 +235,7 @@ template<typename T> void str_dh::process_member_info_response_(T _rcvd_member_i
         assigned_member_key_map_[_rcvd_member_info_response_message.offered_service_][_rcvd_member_info_response_message.member_id_] = _rcvd_member_info_response_message.blinded_secret_;
         assigned_member_endpoint_map_[_rcvd_member_info_response_message.offered_service_][_remote_endpoint] = _rcvd_member_info_response_message.member_id_;
         pending_requests_[_rcvd_member_info_response_message.offered_service_].erase(_remote_endpoint);
+        check_and_add_next_blinded_key_to_group_secret();
     }
 }
 
