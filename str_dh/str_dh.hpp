@@ -79,12 +79,16 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> get_unassigned_member();
         std::unique_ptr<str_key_tree> build_str_tree(secret_t _group_secret, blinded_secret_t _blinded_group_secret,
                                                  secret_t _member_secret, blinded_secret_t _blinded_member_secret);
+        void check_if_higher_member_id_assigned(boost::asio::ip::udp::endpoint _remote_endpoint);
         void send(message& _message);
         void send_cyclic_offer();
         void send_cyclic_response();
         void send_cyclic_member_info_request_predecessors();
+        void send_member_info_request_predecessors();
         void send_cyclic_member_info_synch_request_successors();
+        void send_member_info_synch_request_successors();
         void send_cyclic_synch_token();
+        void send_synch_token_to_next_member();
         bool is_assigned();
         bool all_predecessors_known();
         bool all_successors_known();

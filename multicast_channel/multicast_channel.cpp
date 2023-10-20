@@ -93,7 +93,7 @@ void multicast_channel::receive_unicast() {
 
 void multicast_channel::handle_multicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd) {
   if (_error) {
-    std::cerr << _error.what() << std::endl;
+    std::cerr << "[<multicast_channel>]: " << _error.what() << std::endl;
   }
 
   mc_app_.received_data(multicast_data_, _bytes_recvd, multicast_remote_endpoint_);
@@ -102,7 +102,7 @@ void multicast_channel::handle_multicast_receive_from(const boost::system::error
 
 void multicast_channel::handle_unicast_receive_from(const boost::system::error_code& _error, size_t _bytes_recvd) {
   if (_error) {
-    std::cerr << _error.what() << std::endl;
+    std::cerr << "[<multicast_channel>]: " << _error.what() << std::endl;
   }
 
   mc_app_.received_data(unicast_data_, _bytes_recvd, unicast_remote_endpoint_);
