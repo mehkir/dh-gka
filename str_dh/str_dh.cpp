@@ -154,9 +154,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         synch_token_rcvd_ = true;
         higher_member_id_assigned_ = true;
         synch_finished_ = true;
-        std::unique_ptr<synch_token_message> synch_token_msg = std::make_unique<synch_token_message>();
-        synch_token_msg->member_id_ = 1;
-        send(synch_token_msg.operator*()); statistics_recorder_->record_count(count_metric::SYNCH_TOKEN_MESSAGE_COUNT_);
+        send_synch_token_to_next_member();
         send_cyclic_synch_token();
         return;
     }
@@ -187,11 +185,13 @@ void str_dh::process_synch_token(synch_token_message _rcvd_synch_token_message, 
     } else if (synch && all_successors_known()) {
         synch_token_rcvd_ = true;
         synch_finished_ = true;
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. Sending synch token to next member") // TODO For passive members who got their map filled by synch messages, have to calculate keys here!
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
     }
-    if (member_id_ == member_count_) {
-        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", everyone is finished!")
+    if (_rcvd_synch_token_message.member_id_ == member_count_ && member_id_ == member_count_) {
+        // LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", everyone is finished!")
+        // TODO Think about ending evaluation and informing all here ...
     }
 }
 
@@ -204,9 +204,10 @@ void str_dh::process_member_info_synch_request(member_info_synch_request_message
 void str_dh::process_member_info_synch_response(member_info_synch_response_message _rcvd_member_info_synch_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     higher_member_id_assigned_ = true;
     process_member_info_response_<member_info_synch_response_message>(_rcvd_member_info_synch_response_message, _remote_endpoint);
-    if (all_successors_known() && !synch_finished_) {
-        check_and_add_next_blinded_key_to_group_secret();
+    if (all_successors_known() && !synch_finished_ && synch_token_rcvd_) {
         synch_finished_ = true;
+        check_and_add_next_blinded_key_to_group_secret();
+        LOG_DEBUG("[<str_dh>]: member_id=" << member_id_ << ", Keys are calculated. Sending synch token to next member")
         send_synch_token_to_next_member();
         send_cyclic_synch_token();
     }
@@ -373,10 +374,10 @@ void str_dh::send_cyclic_response() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && assigned_member_key_map_[service_of_interest_].size() <= member_id_ && !higher_member_id_assigned_) {
+            // LOG_DEBUG("[<str_dh>]: (send_cyclic_response) member_id=" << member_id_ << ", assigned maps=" << assigned_member_key_map_[service_of_interest_].size() << "/" << assigned_member_endpoint_map_[service_of_interest_].size())
             std::unique_ptr<response_message> response = std::make_unique<response_message>(response_message_cache_.operator*());
             send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
             send_cyclic_response();
-            LOG_DEBUG("[<str_dh>]: (send_cyclic_response) member_id=" << member_id_ << ", assigned maps=" << assigned_member_key_map_[service_of_interest_].size() << "/" << assigned_member_endpoint_map_[service_of_interest_].size())
         }
     });
 }
@@ -412,17 +413,17 @@ void str_dh::send_member_info_synch_request_successors() {
     std::unique_ptr<member_info_synch_request_message> member_info_synch_req_msg = std::make_unique<member_info_synch_request_message>();
     member_info_synch_req_msg->required_service_ = service_of_interest_;
     member_info_synch_req_msg->requested_members_ = get_unknown_successors();
+    // LOG_DEBUG("[<str_dh>]: (send_cyclic_member_info_synch_request_successors) member_id=" << member_id_ << ", missing members count=" << member_count_ - assigned_member_key_map_[service_of_interest_].size())
     send(member_info_synch_req_msg.operator*()); statistics_recorder_->record_count(count_metric::MEMBER_INFO_REQUEST_MESSAGE_COUNT_);
-    LOG_DEBUG("[<str_dh>]: (send_cyclic_member_info_synch_request_successors) member_id=" << member_id_ << ", missing members count=" << member_info_synch_req_msg->requested_members_.size())
 }
 
 void str_dh::send_cyclic_synch_token() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && !higher_member_id_synching_) {
+            // LOG_DEBUG("[<str_dh>]: (send_cyclic_synch_token) member_id=" << member_id_)
             send_synch_token_to_next_member();
             send_cyclic_synch_token();
-            LOG_DEBUG("[<str_dh>]: (send_cyclic_synch_token) member_id=" << member_id_)
         }
     });
 }
@@ -447,26 +448,26 @@ bool str_dh::all_successors_known() {
 
 std::vector<member_id_t> str_dh::get_unknown_predecessors() {
     std::vector<member_id_t> unknown_predecessors;
-    for (uint32_t i = 1; i < member_id_; i++) {
+    for (member_id_t i = 1; i < member_id_; i++) {
         if (!assigned_member_key_map_[service_of_interest_].contains(i)) {
             unknown_predecessors.push_back(i);
         }
-        if (unknown_predecessors.size() >= 100) {
-            break;
-        }
+        // if (unknown_predecessors.size() >= 100) { // Lists can get bigger than buffers causing input stream errors!
+        //     break;
+        // }
     }
     return unknown_predecessors;
 }
 
 std::vector<member_id_t> str_dh::get_unknown_successors() {
     std::vector<member_id_t> unknown_successors;
-    for (uint32_t i = member_id_+1; i <= member_count_; i++) {
+    for (member_id_t i = member_id_+1; i <= member_count_; i++) {
         if (!assigned_member_key_map_[service_of_interest_].contains(i)) {
             unknown_successors.push_back(i);
         }
-        if (unknown_successors.size() >= 100) {
-            break;
-        }
+        // if (unknown_successors.size() >= 100) { // Lists can get bigger than buffers causing input stream errors!
+        //     break;
+        // }
     }
     return unknown_successors;
 }
