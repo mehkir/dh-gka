@@ -30,7 +30,9 @@ enum message_type {
     SYNCH_TOKEN,
     MEMBER_INFO_SYNCH_REQUEST,
     MEMBER_INFO_SYNCH_RESPONSE,
-    DISTRIBUTED_RESPONSE
+    DISTRIBUTED_RESPONSE,
+    FINISH,
+    FINISH_ACK
 };
 
 static std::vector<unsigned char> get_secbyteblock_as_byte_vector(CryptoPP::SecByteBlock _secbyteblock) {
@@ -410,6 +412,34 @@ struct distributed_response_message : offer_message {
             ar & blinded_sponsor_secret_bytes_;
             ar & encrypted_group_secret_bytes_;
             ar & initialization_vector_;
+        }
+};
+
+struct finish_message : message {
+    public:
+        finish_message() {
+            message_type_ = message_type::FINISH;
+        }
+    private:
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<message>(*this);
+        }
+};
+
+struct finish_ack_message : message {
+    public:
+        finish_ack_message() {
+            message_type_ = message_type::FINISH_ACK;
+        }
+    private:
+        // Serialization
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & boost::serialization::base_object<message>(*this);
         }
 };
 
