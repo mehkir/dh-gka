@@ -27,6 +27,8 @@ private:
     void process_member_info_synch_request(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_member_info_synch_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
     void process_distributed_response(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_finish(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
+    void process_finish_ack(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint);
 };
 
 #endif

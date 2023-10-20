@@ -125,6 +125,18 @@ void message_handler::process_distributed_response(boost::asio::streambuf& buffe
     key_agreement_protocol_->process_distributed_response(rcvd_distributed_response_message, _remote_endpoint);
 }
 
+void message_handler::process_finish(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    finish_message rcvd_finish_message;
+    rcvd_finish_message.deserialize_(buffer);
+    key_agreement_protocol_->process_finish(rcvd_finish_message, _remote_endpoint);
+}
+
+void message_handler::process_finish_ack(boost::asio::streambuf& buffer, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    finish_ack_message rcvd_finish_ack_message;
+    rcvd_finish_ack_message.deserialize_(buffer);
+    key_agreement_protocol_->process_finish_ack(rcvd_finish_ack_message, _remote_endpoint);
+}
+
 void message_handler::serialize(message& _message, boost::asio::streambuf& _buffer) {
     write_to_streambuf(_buffer, reinterpret_cast<const char*>(&_message.message_type_), MESSAGE_ID_SIZE);
     _message.serialize_(_buffer);
