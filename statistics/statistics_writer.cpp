@@ -40,14 +40,12 @@ statistics_writer::statistics_writer() {
     composite_time_statistics_ = segment.construct<shared_statistics_map>(TIME_STATISTICS_MAP_NAME)(std::less<int>(), allocator);
     boost::interprocess::named_condition condition(boost::interprocess::create_only, STATISTICS_CONDITION);
     boost::interprocess::named_mutex mutex(boost::interprocess::create_only, STATISTICS_MUTEX);
-    LOG_DEBUG("[<statistics_writer>] Constructor is called")
 }
 
 statistics_writer::~statistics_writer() {
     boost::interprocess::managed_shared_memory segment(boost::interprocess::open_only, SEGMENT_NAME);
     segment.destroy<shared_statistics_map>(COUNT_STATISTICS_MAP_NAME);
     segment.destroy<shared_statistics_map>(TIME_STATISTICS_MAP_NAME);
-    LOG_DEBUG("[<statistics_writer>] Destructor is called")
 }
 
 void statistics_writer::write_statistics() {
@@ -59,11 +57,11 @@ void statistics_writer::write_statistics() {
     boost::interprocess::scoped_lock<boost::interprocess::named_mutex> lock(mutex);
     int current_member_count = 0;
     while(!(*composite_count_statistics_).count(count_metric::MEMBER_COUNT_) || (current_member_count = (*composite_count_statistics_)[count_metric::MEMBER_COUNT_]) != member_count_) {
-        LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
+        LOG_STD("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
         condition.notify_one();
         condition.wait(lock);
     }
-    LOG_DEBUG("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
+    LOG_STD("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
     std::ofstream statistics_file;
     int filecount = 0;
     std::stringstream filename;

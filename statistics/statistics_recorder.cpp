@@ -33,7 +33,6 @@ void statistics_recorder::record_count(count_metric _count_metric) {
 }
 
 void statistics_recorder::contribute_statistics() {
-    LOG_DEBUG("[<statistics_recorder>] contribute_statistics")
     bool waited_for_shm = false;
     for (bool shared_objects_initialized = false; !shared_objects_initialized;) {
         try {
@@ -46,7 +45,7 @@ void statistics_recorder::contribute_statistics() {
                !(composite_time_statistics_ = segment.find<shared_statistics_map>(TIME_STATISTICS_MAP_NAME).first)) {
                 waited_for_shm = true;
                 condition.wait(lock);
-                std::cout << "[<statistics_recorder>] (contribute_statistics) shared maps not intialized yet" << std::endl;
+                LOG_STD("[<statistics_recorder>] (contribute_statistics) shared maps not intialized yet")
             }
             if(waited_for_shm) {
                 LOG_STD("[<statistics_recorder>] (contribute_statistics) resume composing")
