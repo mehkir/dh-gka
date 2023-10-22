@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 #ifdef PROTO_STR_DH
     str_dh _member(boost::iequals(is_sponsor, "true"), service_id, member_count, scatter_delay_min, scatter_delay_max);
 #elif defined(PROTO_DST_DH)
-    distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id);
+    distributed_dh _member(boost::iequals(is_sponsor, "true"), service_id, member_count, scatter_delay_min, scatter_delay_max);
 #endif
     _member.start();
   }
