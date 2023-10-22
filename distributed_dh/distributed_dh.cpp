@@ -1,38 +1,45 @@
 #include "distributed_dh.hpp"
 #include "MODP2048_256sg.hpp"
 
+#include <unistd.h>
+#include <random>
 #include <cryptopp/nbtheory.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/oids.h>
 #include <cryptopp/asn.h>
 
-distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), message_handler_(std::make_unique<message_handler>(this)) {
+distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), non_acked_responses_timer_(multicast_application_impl::get_io_service()) {
+    scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
-    LOG_DEBUG("[<distributed_dh>] Using default DH")
+    LOG_DEBUG("[<distributed_dh>]: Using default DH")
 #elif defined(ECC_DH)
     diffie_hellman_.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256r1());
-    LOG_DEBUG("[<distributed_dh>] Using ECDH")
+    LOG_DEBUG("[<distributed_dh>]: Using ECDH")
 #endif
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
-    diffie_hellman_.GeneratePrivateKey(rnd_, secret_);
-    diffie_hellman_.GeneratePublicKey(rnd_, secret_, blinded_secret_);
-    group_secret_.New(diffie_hellman_.AgreedValueLength());
+    diffie_hellman_.GeneratePrivateKey(rnd_, secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
+    diffie_hellman_.GeneratePublicKey(rnd_, secret_, blinded_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
+
+    non_acked_responses_.clear();
+    endpoints_acks_rcvd_from_.clear();
 
     if (is_sponsor_) {
-        member_id_ = 1;
-        diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_);
+        group_secret_.New(diffie_hellman_.AgreedValueLength());
+        diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-        LOG_DEBUG("[<distributed_dh>]: generated group secret " << short_secret_repr(group_secret_))
+        LOG_DEBUG("[<distributed_dh>]: pid=" << getpid() << " generated group secret " << short_secret_repr(group_secret_))
 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
-        send_multicast(initial_offer.operator*());
+        send_multicast(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+        send_cyclic_offer();
+        send_cyclic_non_acked_responses();
     } else {
         std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
         initial_find->required_service_ = service_of_interest_;
-        send_multicast(initial_find.operator*());
+        send_multicast(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
     }
 }
 
@@ -55,64 +62,101 @@ void distributed_dh::process_find(find_message _rcvd_find_message, boost::asio::
     if (is_sponsor_ && service_of_interest_ == _rcvd_find_message.required_service_) {
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
-        send_multicast(offer.operator*());
+        send_multicast(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
     }
 }
 
 void distributed_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
+    if (!group_secret_rcvd() && _rcvd_offer_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<request_message> request = std::make_unique<request_message>();
         request->blinded_secret_ = blinded_secret_;
         request->required_service_ = service_of_interest_;
-        send_to(request.operator*(), _remote_endpoint);
+        send_to(request.operator*(), _remote_endpoint); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
     }
 }
 
 void distributed_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    secret_t shared_secret(diffie_hellman_.AgreedValueLength());
-    diffie_hellman_.Agree(shared_secret, secret_, _rcvd_request_message.blinded_secret_);
+    if (!non_acked_responses_.count(_remote_endpoint) && _rcvd_request_message.required_service_ == service_of_interest_) {
+        secret_t shared_secret(diffie_hellman_.AgreedValueLength());
+        diffie_hellman_.Agree(shared_secret, secret_, _rcvd_request_message.blinded_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-    // Calculate a SHA-256 hash over the Diffie-Hellman session key
-    CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
-    CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.SizeInBytes()); 
-    // Generate a random IV
-    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
-    rnd_.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
-    std::vector<unsigned char> iv_vector(iv, iv + CryptoPP::AES::BLOCKSIZE);
+        // Calculate a SHA-256 hash over the Diffie-Hellman session key
+        CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
+        CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.SizeInBytes()); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
+        // Generate a random IV
+        CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
+        rnd_.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
+        std::vector<CryptoPP::byte> iv_vector(iv, iv + CryptoPP::AES::BLOCKSIZE);
 
-    CryptoPP::SecByteBlock encrypted_group_key(group_secret_.SizeInBytes());
+        CryptoPP::SecByteBlock encrypted_group_key(group_secret_.SizeInBytes());
 
-    // Encrypt
-    CryptoPP::CFB_Mode<CryptoPP::AES>::Encryption cfbEncryption(key, CryptoPP::SHA256::DIGESTSIZE, iv);
-    cfbEncryption.ProcessData(encrypted_group_key.BytePtr(), group_secret_.BytePtr(), group_secret_.SizeInBytes());
+        // Encrypt
+        CryptoPP::CFB_Mode<CryptoPP::AES>::Encryption cfbEncryption(key, CryptoPP::SHA256::DIGESTSIZE, iv);
+        cfbEncryption.ProcessData(encrypted_group_key.BytePtr(), group_secret_.BytePtr(), group_secret_.SizeInBytes()); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-    std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>();
-    distributed_response->offered_service_ = service_of_interest_;
-    distributed_response->blinded_sponsor_secret_ = blinded_secret_;
-    distributed_response->encrypted_group_secret_ = encrypted_group_key;
-    distributed_response->initialization_vector_ = iv_vector;
-    send_to(distributed_response.operator*(), _remote_endpoint);
+        std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>();
+        distributed_response->offered_service_ = service_of_interest_;
+        distributed_response->blinded_sponsor_secret_ = blinded_secret_;
+        distributed_response->encrypted_group_secret_ = encrypted_group_key;
+        distributed_response->initialization_vector_ = iv_vector;
+
+        non_acked_responses_[_remote_endpoint] = std::make_unique<distributed_response_message>(distributed_response.operator*());
+
+        send_to(distributed_response.operator*(), _remote_endpoint); 
+    }
 }
 
 void distributed_dh::process_distributed_response(distributed_response_message _rcvd_distributed_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    CryptoPP::SecByteBlock encrypted_group_secret_ = _rcvd_distributed_response_message.encrypted_group_secret_;
+    if (!group_secret_rcvd() && _rcvd_distributed_response_message.offered_service_ == service_of_interest_) {
+        CryptoPP::SecByteBlock encrypted_group_secret_ = _rcvd_distributed_response_message.encrypted_group_secret_;
 
-    secret_t shared_secret(diffie_hellman_.AgreedValueLength());
-    diffie_hellman_.Agree(shared_secret, secret_, _rcvd_distributed_response_message.blinded_sponsor_secret_);
+        secret_t shared_secret(diffie_hellman_.AgreedValueLength());
+        diffie_hellman_.Agree(shared_secret, secret_, _rcvd_distributed_response_message.blinded_sponsor_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-    // Calculate a SHA-256 hash over the Diffie-Hellman session key
-    CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
-    CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.size()); 
+        // Calculate a SHA-256 hash over the Diffie-Hellman session key
+        CryptoPP::SecByteBlock key(CryptoPP::SHA256::DIGESTSIZE);
+        CryptoPP::SHA256().CalculateDigest(key, shared_secret, shared_secret.size()); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-    CryptoPP::SecByteBlock decrypted_group_key(diffie_hellman_.AgreedValueLength());
+        CryptoPP::SecByteBlock decrypted_group_key(diffie_hellman_.AgreedValueLength());
 
-    // Decrypt
-    CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption cfbDecryption(key, CryptoPP::SHA256::DIGESTSIZE, _rcvd_distributed_response_message.initialization_vector_.data());
-    cfbDecryption.ProcessData(decrypted_group_key.BytePtr(), encrypted_group_secret_.BytePtr(), encrypted_group_secret_.SizeInBytes());
+        // Decrypt
+        CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption cfbDecryption(key, CryptoPP::SHA256::DIGESTSIZE, _rcvd_distributed_response_message.initialization_vector_.data());
+        cfbDecryption.ProcessData(decrypted_group_key.BytePtr(), encrypted_group_secret_.BytePtr(), encrypted_group_secret_.SizeInBytes()); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-    group_secret_ = decrypted_group_key;
+        group_secret_.New(diffie_hellman_.AgreedValueLength());
+        group_secret_ = decrypted_group_key;
 
-    LOG_DEBUG("[<distributed_dh>]: received group secret " << short_secret_repr(group_secret_))
+        LOG_DEBUG("[<distributed_dh>]: pid=" << getpid() << " received group secret " << short_secret_repr(group_secret_))
+    }
+    if (group_secret_rcvd() && _rcvd_distributed_response_message.offered_service_ == service_of_interest_) {
+        std::unique_ptr<finish_ack_message> finish_ack = std::make_unique<finish_ack_message>();
+        send_to(finish_ack.operator*(), _remote_endpoint); statistics_recorder_->record_count(count_metric::FINISH_ACK_MESSAGE_COUNT_);
+    }
+}
+
+void distributed_dh::send_cyclic_offer() {
+    scatter_timer_.expires_from_now(scatter_delay_);
+    scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+        if (!_error && (non_acked_responses_.size() + endpoints_acks_rcvd_from_.size() != member_count_-1)) {
+            std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
+            offer->offered_service_ = service_of_interest_;
+            send_multicast(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+            send_cyclic_offer();
+        }
+    });
+}
+
+void distributed_dh::send_cyclic_non_acked_responses() {
+    non_acked_responses_timer_.expires_from_now(scatter_delay_);
+    non_acked_responses_timer_.async_wait([this](const boost::system::error_code& _error) {
+        if (!_error && endpoints_acks_rcvd_from_.size() != member_count_-1) {
+            for (std::unordered_map<boost::asio::ip::udp::endpoint, std::unique_ptr<distributed_response_message>>::iterator itr = non_acked_responses_.begin(); itr != non_acked_responses_.end(); itr++) {
+                std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>(itr->second.operator*());
+                send_to(distributed_response.operator*(), itr->first); statistics_recorder_->record_count(count_metric::DISTRIBUTED_RESPONSE_MESSAGE_COUNT_);
+                send_cyclic_non_acked_responses();
+            }
+        }
+    });
 }
 
 void distributed_dh::send_multicast(message& _message) {
@@ -138,8 +182,8 @@ std::string distributed_dh::short_secret_repr(secret_t _secret) {
     return oss.str();
 }
 
-bool distributed_dh::is_assigned() {
-    return member_id_ != DEFAULT_MEMBER_ID;
+bool distributed_dh::group_secret_rcvd() {
+    return group_secret_.SizeInBytes() != 0;
 }
 
 void distributed_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -171,5 +215,19 @@ void distributed_dh::process_finish(finish_message _rcvd_finish_message, boost::
 }
 
 void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    // Unused, just here to comply with key_agreement_protocol
+    endpoints_acks_rcvd_from_.insert(_remote_endpoint);
+    non_acked_responses_.erase(_remote_endpoint);
+}
+
+std::chrono::milliseconds distributed_dh::compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) {
+    if (_scatter_delay_min > _scatter_delay_max) {
+        const std::uint32_t tmp(_scatter_delay_min);
+        _scatter_delay_min = _scatter_delay_max;
+        _scatter_delay_max = tmp;
+    }
+    std::random_device random_device;
+    std::mt19937 mersenne_twister(random_device());
+    std::uniform_int_distribution<std::uint32_t> distribution(
+            _scatter_delay_min, _scatter_delay_max);
+    return std::chrono::milliseconds(distribution(mersenne_twister));
 }

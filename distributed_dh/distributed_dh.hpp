@@ -5,36 +5,42 @@
 #include "primitives.hpp"
 #include "message_handler.hpp"
 #include "multicast_application_impl.hpp"
+#include "statistics_recorder.hpp"
 
 #include <cryptopp/dh.h>
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/osrng.h>
 #include <unordered_map>
-#include <set>
-#include <tuple>
+#include <unordered_set>
 
 class distributed_dh : public key_agreement_protocol, public multicast_application_impl {
     // Variables
     public:
     protected:
     private:
-#ifndef ECC_DH
+#ifdef DEFAULT_DH
         CryptoPP::DH diffie_hellman_;
-#else
+#elif defined(ECC_DH)
         CryptoPP::ECDH<CryptoPP::ECP>::Domain diffie_hellman_;
 #endif
         std::mutex receive_mutex_;
         service_id_t service_of_interest_ = DEFAULT_SERVICE_ID;
-        member_id_t member_id_ = DEFAULT_MEMBER_ID;
         bool is_sponsor_;
         CryptoPP::AutoSeededRandomPool rnd_;
         secret_t group_secret_;
         secret_t secret_;
         blinded_secret_t blinded_secret_;
         std::unique_ptr<message_handler> message_handler_;
+        std::uint32_t member_count_;
+        std::unique_ptr<statistics_recorder> statistics_recorder_;
+        std::chrono::milliseconds scatter_delay_;
+        boost::asio::steady_timer scatter_timer_;
+        boost::asio::steady_timer non_acked_responses_timer_;
+        std::unordered_map<boost::asio::ip::udp::endpoint, std::unique_ptr<distributed_response_message>> non_acked_responses_;
+        std::unordered_set<boost::asio::ip::udp::endpoint> endpoints_acks_rcvd_from_;
     // Methods
     public:
-        distributed_dh(bool _is_sponsor, service_id_t _service_id);
+        distributed_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
         ~distributed_dh();
         void start();
         virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
@@ -52,10 +58,13 @@ class distributed_dh : public key_agreement_protocol, public multicast_applicati
         virtual void process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) override;
     protected:
     private:
-        bool is_assigned();
+        bool group_secret_rcvd();
+        void send_cyclic_offer();
+        void send_cyclic_non_acked_responses();
         void send_multicast(message& _message);
         void send_to(message& _message, boost::asio::ip::udp::endpoint _remote_endpoint);
         std::string short_secret_repr(secret_t _secret);
+        std::chrono::milliseconds compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
 };
 
 #endif
