@@ -22,9 +22,9 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
     public:
     protected:
     private:
-#ifndef ECC_DH
+#ifdef DEFAULT_DH
         CryptoPP::DH diffie_hellman_;
-#else
+#elif defined(ECC_DH)
         CryptoPP::ECDH<CryptoPP::ECP>::Domain diffie_hellman_;
 #endif
         std::mutex receive_mutex_;
@@ -48,9 +48,9 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unordered_map<service_id_t, std::unordered_map<member_id_t,blinded_secret_t>> assigned_member_key_map_;
         std::unordered_map<service_id_t, std::unordered_map<boost::asio::ip::udp::endpoint,member_id_t>> assigned_member_endpoint_map_;
         std::unique_ptr<message_handler> message_handler_;
-        std::unique_ptr<statistics_recorder> statistics_recorder_;
         std::uint32_t member_count_;
-        std::chrono::milliseconds scatter_delay_; 
+        std::unique_ptr<statistics_recorder> statistics_recorder_;
+        std::chrono::milliseconds scatter_delay_;
         boost::asio::steady_timer scatter_timer_;
         boost::asio::steady_timer timeout_timer_;
         std::unique_ptr<response_message> response_message_cache_;

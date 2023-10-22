@@ -13,10 +13,10 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member
     scatter_timer_.expires_from_now(scatter_delay_);
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
-    LOG_DEBUG("[<str_dh>] Using default DH")
+    LOG_DEBUG("[<str_dh>]: Using default DH")
 #elif defined(ECC_DH)
     diffie_hellman_.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256r1());
-    LOG_DEBUG("[<str_dh>] Using ECDH")
+    LOG_DEBUG("[<str_dh>]: Using ECDH")
 #endif
     secret_.New(diffie_hellman_.PrivateKeyLength());
     blinded_secret_.New(diffie_hellman_.PublicKeyLength());
