@@ -29,6 +29,8 @@ start() {
     local CRYPTO_ALGORITHM=$5
     local KEY_AGREEMENT_PROTOCOL=$6
 
+    echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
+
     cd /root/c++-multicast/
     /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${CRYPTO_ALGORITHM}-${KEY_AGREEMENT_PROTOCOL}-${MEMBER_COUNT}" &
     echo "statistics-writer is started"
@@ -47,7 +49,15 @@ start() {
         sleep 1
     done
     /root/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+    while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
+        echo "Waiting for initial sponsor to start up"
+        sleep 1
+    done
     echo "Initial sponsor is started"
+    while [[ $(get_members_up_count_by_unique_ports) < $MEMBER_COUNT ]]; do
+        echo "Initial sponsor's port is still bound more than once"
+        sleep 1
+    done
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
     done
