@@ -103,7 +103,7 @@ void distributed_dh::process_request(request_message _rcvd_request_message, boos
 
         non_acked_responses_[_remote_endpoint] = std::make_unique<distributed_response_message>(distributed_response.operator*());
 
-        send_to(distributed_response.operator*(), _remote_endpoint); 
+        send_to(distributed_response.operator*(), _remote_endpoint); statistics_recorder_->record_count(count_metric::DISTRIBUTED_RESPONSE_MESSAGE_COUNT_);
     }
 }
 
@@ -143,13 +143,13 @@ void distributed_dh::send_cyclic_messages() {
             offer->offered_service_ = service_of_interest_;
             send_multicast(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
         }
-        if (!_error && endpoints_acks_rcvd_from_.size() != member_count_-1) {
+        if (!_error) {
             for (std::unordered_map<boost::asio::ip::udp::endpoint, std::unique_ptr<distributed_response_message>>::iterator itr = non_acked_responses_.begin(); itr != non_acked_responses_.end(); itr++) {
                 std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>(itr->second.operator*());
                 send_to(distributed_response.operator*(), itr->first); statistics_recorder_->record_count(count_metric::DISTRIBUTED_RESPONSE_MESSAGE_COUNT_);
             }
         }
-        if (!_error && ((non_acked_responses_.size() + endpoints_acks_rcvd_from_.size() != member_count_-1) || (endpoints_acks_rcvd_from_.size() != member_count_-1))) {
+        if (!_error && (endpoints_acks_rcvd_from_.size() != member_count_-1)) {
             send_cyclic_messages();
         }
     });
@@ -215,7 +215,7 @@ void distributed_dh::process_finish(finish_message _rcvd_finish_message, boost::
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
                 std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
-                send_multicast(finish.operator*());
+                send_multicast(finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
                 std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
                 process_finish(self_msg.operator*(), get_local_endpoint());
             }
@@ -235,7 +235,7 @@ void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_mess
             }
         });
         std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
-        send_multicast(finish.operator*());
+        send_multicast(finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
         std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
         process_finish(self_msg.operator*(), get_local_endpoint());
     }
