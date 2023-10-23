@@ -32,7 +32,11 @@ start() {
     echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
 
     cd /root/c++-multicast/
-    /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${CRYPTO_ALGORITHM}-${KEY_AGREEMENT_PROTOCOL}-${MEMBER_COUNT}" &
+    /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${KEY_AGREEMENT_PROTOCOL}-${CRYPTO_ALGORITHM}-${MEMBER_COUNT}" &
+    while [[ -z $(pgrep statistics-wr) ]]; do
+        echo "Waiting for statistics writer to start up"
+        sleep 1
+    done
     echo "statistics-writer is started"
 
     for (( i=0; i<$(get_subscriber_count $MEMBER_COUNT); i++ ))
