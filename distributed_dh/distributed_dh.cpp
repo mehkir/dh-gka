@@ -28,6 +28,7 @@ distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std:
     statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
 
     if (is_sponsor_) {
+        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
         group_secret_.New(diffie_hellman_.AgreedValueLength());
         diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
@@ -77,6 +78,7 @@ void distributed_dh::process_offer(offer_message _rcvd_offer_message, boost::asi
 }
 
 void distributed_dh::process_request(request_message _rcvd_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+    if (non_acked_responses_.size() + endpoints_acks_rcvd_from_.size() == 0) { statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_); }
     if (!non_acked_responses_.count(_remote_endpoint) && _rcvd_request_message.required_service_ == service_of_interest_) {
         secret_t shared_secret(diffie_hellman_.AgreedValueLength());
         diffie_hellman_.Agree(shared_secret, secret_, _rcvd_request_message.blinded_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
@@ -210,7 +212,7 @@ void distributed_dh::process_finish(finish_message _rcvd_finish_message, boost::
     if (!is_sponsor_) {
         contribute_statistics();
     }
-    if (is_sponsor_ && _remote_endpoint == get_local_endpoint()) {
+    if (_remote_endpoint == get_local_endpoint()) {
         scatter_timer_.expires_from_now(scatter_delay_);
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
@@ -227,6 +229,8 @@ void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_mess
     endpoints_acks_rcvd_from_.insert(_remote_endpoint);
     non_acked_responses_.erase(_remote_endpoint);
     if (is_sponsor_ && endpoints_acks_rcvd_from_.size() == member_count_-1) {
+        is_sponsor_ = false;
+        statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
         timeout_timer_.expires_from_now(std::chrono::seconds(TIMEOUT));
         timeout_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
