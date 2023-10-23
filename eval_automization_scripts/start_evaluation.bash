@@ -61,9 +61,15 @@ start() {
         sleep 1
     done
     while [[ -n $(pgrep statistics-wr) ]]; do
+        echo "Waiting for statistics writer to stop"
         sleep 1
     done
     echo "statistics-writer is stopped"
+    while [[ $(get_members_up_count_by_unique_ports) > 0 ]]; do
+        echo "Waiting for all members to stop"
+        sleep 1
+    done
+    echo "All members are stopped"
 }
 
 function on_exit() {
