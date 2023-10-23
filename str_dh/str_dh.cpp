@@ -238,9 +238,10 @@ void str_dh::process_finish(finish_message _rcvd_finish_message, boost::asio::ip
     if (member_id_ == INITIAL_SPONSOR_ID && assigned_member_endpoint_map_[service_of_interest_].count(_remote_endpoint) && assigned_member_endpoint_map_[service_of_interest_][_remote_endpoint] == member_count_) {
         std::unique_ptr<finish_ack_message> finish_ack = std::make_unique<finish_ack_message>();
         send(finish_ack.operator*()); statistics_recorder_->record_count(count_metric::FINISH_ACK_MESSAGE_COUNT_);
-        timeout_timer_.expires_from_now(std::chrono::seconds(3));
+        timeout_timer_.expires_from_now(std::chrono::seconds(TIMEOUT));
         timeout_timer_.async_wait([this](const boost::system::error_code& _error) {
             if (!_error) {
+                scatter_timer_.cancel();
                 contribute_statistics();
             }
         });

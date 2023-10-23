@@ -8,7 +8,7 @@
 #include <cryptopp/oids.h>
 #include <cryptopp/asn.h>
 
-distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), non_acked_responses_timer_(multicast_application_impl::get_io_service()) {
+distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), timeout_timer_(multicast_application_impl::get_io_service()) {
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
@@ -25,17 +25,18 @@ distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std:
     non_acked_responses_.clear();
     endpoints_acks_rcvd_from_.clear();
 
+    statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
+
     if (is_sponsor_) {
         group_secret_.New(diffie_hellman_.AgreedValueLength());
         diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
-        LOG_DEBUG("[<distributed_dh>]: pid=" << getpid() << " generated group secret " << short_secret_repr(group_secret_))
+        LOG_STD("[<distributed_dh>]: pid=" << getpid() << " generated group secret " << short_secret_repr(group_secret_))
 
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send_multicast(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
-        send_cyclic_offer();
-        send_cyclic_non_acked_responses();
+        send_cyclic_messages();
     } else {
         std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
         initial_find->required_service_ = service_of_interest_;
@@ -134,27 +135,22 @@ void distributed_dh::process_distributed_response(distributed_response_message _
     }
 }
 
-void distributed_dh::send_cyclic_offer() {
+void distributed_dh::send_cyclic_messages() {
     scatter_timer_.expires_from_now(scatter_delay_);
     scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && (non_acked_responses_.size() + endpoints_acks_rcvd_from_.size() != member_count_-1)) {
             std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
             offer->offered_service_ = service_of_interest_;
             send_multicast(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
-            send_cyclic_offer();
         }
-    });
-}
-
-void distributed_dh::send_cyclic_non_acked_responses() {
-    non_acked_responses_timer_.expires_from_now(scatter_delay_);
-    non_acked_responses_timer_.async_wait([this](const boost::system::error_code& _error) {
         if (!_error && endpoints_acks_rcvd_from_.size() != member_count_-1) {
             for (std::unordered_map<boost::asio::ip::udp::endpoint, std::unique_ptr<distributed_response_message>>::iterator itr = non_acked_responses_.begin(); itr != non_acked_responses_.end(); itr++) {
                 std::unique_ptr<distributed_response_message> distributed_response = std::make_unique<distributed_response_message>(itr->second.operator*());
                 send_to(distributed_response.operator*(), itr->first); statistics_recorder_->record_count(count_metric::DISTRIBUTED_RESPONSE_MESSAGE_COUNT_);
-                send_cyclic_non_acked_responses();
             }
+        }
+        if (!_error && ((non_acked_responses_.size() + endpoints_acks_rcvd_from_.size() != member_count_-1) || (endpoints_acks_rcvd_from_.size() != member_count_-1))) {
+            send_cyclic_messages();
         }
     });
 }
@@ -211,12 +207,45 @@ void distributed_dh::process_member_info_synch_response(member_info_synch_respon
 }
 
 void distributed_dh::process_finish(finish_message _rcvd_finish_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    // Unused, just here to comply with key_agreement_protocol
+    if (!is_sponsor_) {
+        contribute_statistics();
+    }
+    if (is_sponsor_ && _remote_endpoint == get_local_endpoint()) {
+        scatter_timer_.expires_from_now(scatter_delay_);
+        scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
+            if (!_error) {
+                std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
+                send_multicast(finish.operator*());
+                std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
+                process_finish(self_msg.operator*(), get_local_endpoint());
+            }
+        });
+    }
 }
 
 void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
     endpoints_acks_rcvd_from_.insert(_remote_endpoint);
     non_acked_responses_.erase(_remote_endpoint);
+    if (is_sponsor_ && endpoints_acks_rcvd_from_.size() == member_count_-1) {
+        timeout_timer_.expires_from_now(std::chrono::seconds(TIMEOUT));
+        timeout_timer_.async_wait([this](const boost::system::error_code& _error) {
+            if (!_error) {
+                scatter_timer_.cancel();
+                contribute_statistics();
+            }
+        });
+        std::unique_ptr<finish_message> finish = std::make_unique<finish_message>();
+        send_multicast(finish.operator*());
+        std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
+        process_finish(self_msg.operator*(), get_local_endpoint());
+    }
+}
+
+void distributed_dh::contribute_statistics() {
+    if (group_secret_rcvd()) {
+        statistics_recorder_->contribute_statistics();
+        multicast_application_impl::stop();
+    }
 }
 
 std::chrono::milliseconds distributed_dh::compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) {

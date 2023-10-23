@@ -35,7 +35,7 @@ class distributed_dh : public key_agreement_protocol, public multicast_applicati
         std::unique_ptr<statistics_recorder> statistics_recorder_;
         std::chrono::milliseconds scatter_delay_;
         boost::asio::steady_timer scatter_timer_;
-        boost::asio::steady_timer non_acked_responses_timer_;
+        boost::asio::steady_timer timeout_timer_;
         std::unordered_map<boost::asio::ip::udp::endpoint, std::unique_ptr<distributed_response_message>> non_acked_responses_;
         std::unordered_set<boost::asio::ip::udp::endpoint> endpoints_acks_rcvd_from_;
     // Methods
@@ -59,11 +59,11 @@ class distributed_dh : public key_agreement_protocol, public multicast_applicati
     protected:
     private:
         bool group_secret_rcvd();
-        void send_cyclic_offer();
-        void send_cyclic_non_acked_responses();
+        void send_cyclic_messages();
         void send_multicast(message& _message);
         void send_to(message& _message, boost::asio::ip::udp::endpoint _remote_endpoint);
         std::string short_secret_repr(secret_t _secret);
+        void contribute_statistics();
         std::chrono::milliseconds compute_scatter_delay(std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
 };
 
