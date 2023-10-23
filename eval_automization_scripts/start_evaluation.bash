@@ -1,5 +1,8 @@
 #!/bin/bash
 compile() {
+    local CRYPTO_ALGORITHM=$1
+    local KEY_AGREEMENT_PROTOCOL=$2
+    sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" /root/c++-multicast/CMakeLists.txt
     echo "Compiling all targets..."
     cd /root/c++-multicast/
     /usr/sbin/cmake --build /root/c++-multicast/build --config Release --target all -j 14 --
@@ -19,24 +22,31 @@ get_members_up_count_by_unique_ports() {
 }
 
 start() {
+    local SERVICE_ID=$1
+    local MEMBER_COUNT=$2
+    local SCATTER_DELAY_MIN=$3
+    local SCATTER_DELAY_MAX=$4
+    local CRYPTO_ALGORITHM=$5
+    local KEY_AGREEMENT_PROTOCOL=$6
+
     cd /root/c++-multicast/
-    /root/c++-multicast/build/statistics-writer-main $2 &
+    /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${CRYPTO_ALGORITHM}-${KEY_AGREEMENT_PROTOCOL}-${MEMBER_COUNT}" &
     echo "statistics-writer is started"
 
-    for (( i=0; i<$(get_subscriber_count $2); i++ ))
+    for (( i=0; i<$(get_subscriber_count $MEMBER_COUNT); i++ ))
     do
-        /root/c++-multicast/build/multicast-dh-example false $1 $2 $3 $4 &
+        /root/c++-multicast/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     done
-    while [[ $(get_process_count) -ne $(get_subscriber_count $2) ]]; do
-        echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $2) are up"
+    while [[ $(get_process_count) -ne $(get_subscriber_count $MEMBER_COUNT) ]]; do
+        echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $MEMBER_COUNT) are up"
         sleep 1
     done
     echo "All subscribers started up"
-    while [[ $(get_members_up_count_by_unique_ports) < $(get_subscriber_count $2) ]]; do
+    while [[ $(get_members_up_count_by_unique_ports) < $(get_subscriber_count $MEMBER_COUNT) ]]; do
         echo "There are still ports bound more than once"
         sleep 1
     done
-    /root/c++-multicast/build/multicast-dh-example true $1 $2 $3 $4 &
+    /root/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     echo "Initial sponsor is started"
     while [[ -n $(pgrep statistics-wr) ]]; do
         sleep 1
@@ -52,10 +62,10 @@ function on_exit() {
     exit 1
 }
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 6 ]; then
     echo "Not enough parameters" 1>&2
-    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)>"
-    echo "Example: $0 42 20 10 100"
+    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <crypto_algorithm> <key_agreement_protocol>"
+    echo "Example: $0 42 20 10 100 DEFAULT_DH|ECC_DH PROTO_STR_DH|PROTO_DST_DH"
     exit 1
 fi
 
@@ -64,14 +74,22 @@ if [[ $1 -lt 1 ]]; then
     exit 1
 fi
 
-echo $2
-
 if [[ $2 -lt 1 ]]; then
     echo "member count must be greater than 1"
     exit 1
 fi
 
+if [[ $5 != "DEFAULT_DH" && $5 != "ECC_DH" ]]; then
+    echo "Crypto algorithm must be DEFAULT_DH|ECC_DH"
+    exit 1
+fi
+
+if [[ $6 != "PROTO_STR_DH" && $6 != "PROTO_DST_DH" ]]; then
+    echo "Key agreement must be PROTO_STR_DH|PROTO_DST_DH"
+    exit 1
+fi
+
 trap 'on_exit' SIGINT
 
-compile
-start $1 $2 $3 $4
+compile $5 $6
+start $1 $2 $3 $4 $5 $6

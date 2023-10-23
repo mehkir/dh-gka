@@ -8,12 +8,14 @@
 std::mutex statistics_writer::mutex_;
 statistics_writer* statistics_writer::instance_;
 int statistics_writer::member_count_;
+std::string statistics_writer::filename_description_;
 
-statistics_writer* statistics_writer::get_instance(int _member_count) {
+statistics_writer* statistics_writer::get_instance(int _member_count, std::string _filename_description) {
     std::lock_guard<std::mutex> lock_guard(mutex_);
     if(instance_ == nullptr) {
         instance_ = new statistics_writer();
         member_count_ = _member_count;
+        filename_description_ = _filename_description;
     }
     return instance_;
 }
@@ -66,12 +68,12 @@ void statistics_writer::write_statistics() {
     std::ofstream statistics_file;
     int filecount = 0;
     std::stringstream filename;
-    filename << "statistic_results/statistic-#" << filecount << ".csv";
+    filename << "statistic_results/" << filename_description_ << "-#" << filecount << ".csv";
     struct stat buffer;
     //Choose unused/non-existing filename
     for(filecount = 1; (stat(filename.str().c_str(), &buffer) == 0); filecount++) {
         filename.str("");
-        filename << "statistic_results/statistic-#" << filecount << ".csv";
+        filename << "statistic_results/" << filename_description_ << "-#" << filecount << ".csv";
     }
     statistics_file.open(filename.str());
     //Write header

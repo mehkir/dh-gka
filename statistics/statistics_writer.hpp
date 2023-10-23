@@ -23,13 +23,14 @@ struct condition_remove
 
 class statistics_writer {
 public:
-    static statistics_writer* get_instance(int _member_count);
+    static statistics_writer* get_instance(int _member_count, std::string _filename_description);
     void write_statistics();
     ~statistics_writer();
 private:
     static std::mutex mutex_;
     static statistics_writer* instance_;
     static int member_count_;
+    static std::string filename_description_;
     shm_remove shm_remover_;
     mutex_remove mutex_remover_;
     condition_remove condition_remover_;
