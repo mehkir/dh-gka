@@ -4,7 +4,6 @@ compile() {
     local KEY_AGREEMENT_PROTOCOL=$2
     sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" /root/c++-multicast/CMakeLists.txt
     echo "Compiling all targets..."
-    cd /root/c++-multicast/
     /usr/sbin/cmake --build /root/c++-multicast/build --config Release --target all -j 14 --
     echo "All targets are compiled."
 }
@@ -31,7 +30,6 @@ start() {
 
     echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
 
-    cd /root/c++-multicast/
     /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${KEY_AGREEMENT_PROTOCOL}-${CRYPTO_ALGORITHM}-${MEMBER_COUNT}" &
     while [[ -z $(pgrep statistics-wr) ]]; do
         echo "Waiting for statistics writer to start up"
