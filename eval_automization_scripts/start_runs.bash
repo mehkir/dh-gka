@@ -1,5 +1,5 @@
 #!/bin/bash
-
+PROJECT_PATH="/home/mehmet/vscode-workspaces"
 SERVICE_ID=42
 SCATTER_DELAY_MIN=10
 SCATTER_DELAY_MAX=100
@@ -13,8 +13,10 @@ for protocol in "${KEY_AGREEMENT_PROTOCOL[@]}"; do
         for i in $(seq 1 $RUNS); do
             echo "Running ${protocol}-${algorithm} ${i}/${RUNS}"
             for member_count in {100..1000..100}; do
-                /root/c++-multicast/eval_automization_scripts/start_evaluation.bash $SERVICE_ID $member_count $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $algorithm $protocol 1>/dev/null
+                ${PROJECT_PATH}/c++-multicast/eval_automization_scripts/start_evaluation.bash $SERVICE_ID $member_count $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $algorithm $protocol 1>/dev/null
             done
         done
     done
 done
+
+echo $(pwd)

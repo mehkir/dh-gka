@@ -1,10 +1,12 @@
 #!/bin/bash
+PROJECT_PATH="/home/mehmet/vscode-workspaces"
+
 compile() {
     local CRYPTO_ALGORITHM=$1
     local KEY_AGREEMENT_PROTOCOL=$2
-    sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" /root/c++-multicast/CMakeLists.txt
+    sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" ${PROJECT_PATH}/c++-multicast/CMakeLists.txt
     echo "Compiling all targets..."
-    /usr/sbin/cmake --build /root/c++-multicast/build --config Release --target all -j 14 --
+    /usr/sbin/cmake --build ${PROJECT_PATH}/c++-multicast/build --config Release --target all -j 14 --
     echo "All targets are compiled."
 }
 
@@ -30,7 +32,7 @@ start() {
 
     echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
 
-    /root/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${KEY_AGREEMENT_PROTOCOL}-${CRYPTO_ALGORITHM}-${MEMBER_COUNT}" &
+    ${PROJECT_PATH}/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${KEY_AGREEMENT_PROTOCOL}-${CRYPTO_ALGORITHM}-${MEMBER_COUNT}" &
     while [[ -z $(pgrep statistics-wr) ]]; do
         echo "Waiting for statistics writer to start up"
         sleep 1
@@ -39,7 +41,7 @@ start() {
 
     for (( i=0; i<$(get_subscriber_count $MEMBER_COUNT); i++ ))
     do
-        /root/c++-multicast/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+        ${PROJECT_PATH}/c++-multicast/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     done
     while [[ $(get_process_count) -ne $(get_subscriber_count $MEMBER_COUNT) ]]; do
         echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $MEMBER_COUNT) are up"
@@ -50,7 +52,7 @@ start() {
         echo "There are still ports bound more than once"
         sleep 1
     done
-    /root/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+    ${PROJECT_PATH}/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
         echo "Waiting for initial sponsor to start up"
         sleep 1
