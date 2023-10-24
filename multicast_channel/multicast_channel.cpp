@@ -16,24 +16,56 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
       unicast_socket_(_io_service),
       mc_app_(_mc_app) {
     try {
+      boost::system::error_code ec;
       // Create the multicast socket and bind it to the multicast address and port
-      multicast_socket_.open(boost::asio::ip::udp::v4());
-      multicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-      multicast_socket_.bind(boost::asio::ip::udp::endpoint(_multicast_address, _multicast_port));
+      multicast_socket_.open(boost::asio::ip::udp::v4(), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
+      multicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
+      multicast_socket_.bind(boost::asio::ip::udp::endpoint(_multicast_address, _multicast_port), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
       // Join the multicast group.
-      multicast_socket_.set_option(boost::asio::ip::multicast::join_group(_multicast_address));
+      multicast_socket_.set_option(boost::asio::ip::multicast::join_group(_multicast_address), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
+      multicast_socket_.set_option(boost::asio::ip::udp::socket::receive_buffer_size(max_length), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
       
       bool port_not_bound_once = false;
       do {
           if(port_not_bound_once) {
             sleep(1);
-            unicast_socket_.close();
-            //LOG_STD("[<multicast_channel>]: socket was bound at least twice")
+            unicast_socket_.close(ec);
+            if (ec) {
+              std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+            }
           }
           // Create the unicast socket and bind it to an open port
-          unicast_socket_.open(boost::asio::ip::udp::v4());
-          unicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-          unicast_socket_.bind(boost::asio::ip::udp::endpoint(_listen_interface_by_address, 0));
+          unicast_socket_.open(boost::asio::ip::udp::v4(), ec);
+          if (ec) {
+            std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+          }
+          unicast_socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true), ec);
+          if (ec) {
+            std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+          }
+          unicast_socket_.bind(boost::asio::ip::udp::endpoint(_listen_interface_by_address, 0), ec);
+          if (ec) {
+            std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+          }
+          unicast_socket_.set_option(boost::asio::ip::udp::socket::receive_buffer_size(max_length), ec);
+          if (ec) {
+            std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+          }
       } while (port_not_bound_once = !is_port_bound_once(get_local_endpoint().port()));
 
       receive_multicast();
