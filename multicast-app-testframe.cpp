@@ -22,7 +22,6 @@ class multicast_app_testframe : public key_agreement_protocol, public multicast_
         }
 
         void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override {
-            if (is_sponsor_)LOG_DEBUG("[<multicast_app_testframe>]: received_data")
             std::lock_guard<std::mutex> lock_receive(receive_mutex_);
             if (get_local_endpoint().port() != _remote_endpoint.port()) {
                 message_handler_->deserialize_and_callback(_data, _bytes_recvd, _remote_endpoint);
