@@ -564,8 +564,8 @@ std::string str_dh::short_secret_repr(secret_t _secret) {
 }
 
 void str_dh::contribute_statistics() {
-    if((assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())
-        && (assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_) && ( member_count_ - member_id_ + 1 == keys_computed_count_ )) {
+    if((assigned_member_endpoint_map_[service_of_interest_].size()+is_assigned() == member_count_) && (member_count_ - member_id_ + 1 == keys_computed_count_)
+        && (assigned_member_key_map_[service_of_interest_].size() == assigned_member_endpoint_map_[service_of_interest_].size())) {
             statistics_recorder_->contribute_statistics();
             multicast_application_impl::stop();
     }
