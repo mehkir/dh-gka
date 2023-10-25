@@ -9,8 +9,9 @@
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
 str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false), last_member_synch_token_sending_triggered_(false), finish_message_rcvd_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), timeout_timer_(multicast_application_impl::get_io_service()) {
+#ifdef RETRANSMISSIONS
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
-    scatter_timer_.expires_from_now(scatter_delay_);
+#endif
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<str_dh>]: Using default DH")
@@ -37,12 +38,14 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+#ifdef RETRANSMISSIONS
         send_cyclic_offer();
+#endif
     } else {
         keys_computed_count_ = 0;
-        std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
-        initial_find->required_service_ = service_of_interest_;
-        send(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
+        // std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
+        // initial_find->required_service_ = service_of_interest_;
+        // send(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
     }
 }
 
@@ -66,8 +69,11 @@ void str_dh::process_find(find_message _rcvd_find_message, boost::asio::ip::udp:
 }
 
 void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
+#ifdef RETRANSMISSIONS
     check_if_higher_member_id_assigned(_remote_endpoint);
+#endif
     if (!is_assigned() && _rcvd_offer_message.offered_service_ == service_of_interest_ && !request_scheduled_) {
+#ifdef RETRANSMISSIONS
         request_scheduled_ = !request_scheduled_;
         scatter_timer_.expires_from_now(scatter_delay_);
         scatter_timer_.async_wait([this](const boost::system::error_code& _error) {
@@ -79,6 +85,12 @@ void str_dh::process_offer(offer_message _rcvd_offer_message, boost::asio::ip::u
             }
             request_scheduled_ = !request_scheduled_;
         });
+#else
+        std::unique_ptr<request_message> request = std::make_unique<request_message>();
+        request->blinded_secret_ = blinded_secret_;
+        request->required_service_ = service_of_interest_;
+        send(request.operator*()); statistics_recorder_->record_count(count_metric::REQUEST_MESSAGE_COUNT_);
+#endif
     }
 }
 
@@ -130,7 +142,7 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
 
         keys_computed_count_++;
     }
-
+#ifdef RETRANSMISSIONS
     if (is_last_member() && !last_member_synch_token_sending_triggered_) {
         last_member_synch_token_sending_triggered_ = true;
         is_sponsor_ = false;
@@ -140,8 +152,14 @@ void str_dh::process_response(response_message _rcvd_response_message, boost::as
         send_cyclic_synch_token();
         return;
     }
-    check_and_add_next_blinded_key_to_group_secret();
-    process_pending_request();
+#endif
+    if (!is_last_member()) {
+        check_and_add_next_blinded_key_to_group_secret();
+        process_pending_request();
+    }
+#ifndef RETRANSMISSIONS
+    contribute_statistics();
+#endif
 }
 
 void str_dh::process_member_info_request(member_info_request_message _rcvd_member_info_request_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -286,11 +304,13 @@ void str_dh::process_pending_request() {
         return;
     }
 
+#ifdef RETRANSMISSIONS
     if (!all_predecessors_known()) {
         send_member_info_request_predecessors();
         send_cyclic_member_info_request_predecessors();
         return;
     }
+#endif
 
     std::pair<boost::asio::ip::udp::endpoint, blinded_secret_t> unassigned_member = get_unassigned_member();
     boost::asio::ip::udp::endpoint pending_remote_endpoint = unassigned_member.first;
@@ -324,12 +344,16 @@ void str_dh::process_pending_request() {
         keys_computed_count_++;
 
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
+#ifdef RETRANSMISSIONS
         send_cyclic_response();
+#endif
     } else {
+#ifdef RETRANSMISSIONS
         std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
         offer->offered_service_ = service_of_interest_;
         send(offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
         send_cyclic_offer();
+#endif
     }
 }
 
@@ -483,7 +507,7 @@ bool str_dh::is_assigned() {
 }
 
 bool str_dh::is_last_member() {
-    return member_id_ == member_count_;
+    return is_assigned() && (member_id_ == member_count_);
 }
 
 bool str_dh::all_predecessors_known() {
