@@ -57,11 +57,19 @@ void statistics_recorder::contribute_statistics() {
                 (*composite_count_statistics_)[pair.first] += pair.second;
             }
             for(std::pair<metric_id, metric_value> pair : time_statistics_) {
+#ifdef RETRANSMISSIONS
                 if(!(*composite_time_statistics_).count(pair.first)) {
                     (*composite_time_statistics_)[pair.first] = pair.second;
                 } else {
                     std::cerr << "[<statistics_recorder>] (contribute_statistics) composite_time_statistics map already contains time metric " << pair.first << std::endl;
                 }
+#else
+                if(!(*composite_time_statistics_).count(pair.first)) {
+                    (*composite_time_statistics_)[pair.first] = pair.second;
+                } else if ((*composite_time_statistics_)[pair.first] < pair.second ) {
+                    (*composite_time_statistics_)[pair.first] = pair.second;
+                }
+#endif
             }
             condition.notify_one();
             shared_objects_initialized = true;
