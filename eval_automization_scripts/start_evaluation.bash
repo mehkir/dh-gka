@@ -62,8 +62,8 @@ start() {
         echo "Initial sponsor's port is still bound more than once"
         sleep 1
     done
+    echo "Waiting for statistics writer to stop"
     while [[ -n $(pgrep statistics-wr) ]]; do
-        echo "Waiting for statistics writer to stop"
         sleep 1
     done
     echo "statistics-writer is stopped"
