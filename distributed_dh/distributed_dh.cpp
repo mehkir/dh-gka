@@ -9,7 +9,9 @@
 #include <cryptopp/asn.h>
 
 distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), timeout_timer_(multicast_application_impl::get_io_service()) {
+#ifdef RETRANSMISSIONS
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
+#endif
 #ifdef DEFAULT_DH
     diffie_hellman_.AccessGroupParameters().Initialize(P, Q, G);
     LOG_DEBUG("[<distributed_dh>]: Using default DH")
@@ -37,11 +39,13 @@ distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std:
         std::unique_ptr<offer_message> initial_offer = std::make_unique<offer_message>();
         initial_offer->offered_service_ = service_of_interest_;
         send_multicast(initial_offer.operator*()); statistics_recorder_->record_count(count_metric::OFFER_MESSAGE_COUNT_);
+#ifdef RETRANSMISSIONS
         send_cyclic_messages();
+#endif
     } else {
-        std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
-        initial_find->required_service_ = service_of_interest_;
-        send_multicast(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
+        // std::unique_ptr<find_message> initial_find = std::make_unique<find_message>();
+        // initial_find->required_service_ = service_of_interest_;
+        // send_multicast(initial_find.operator*()); statistics_recorder_->record_count(count_metric::FIND_MESSAGE_COUNT_);
     }
 }
 
