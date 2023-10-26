@@ -53,25 +53,27 @@ start() {
         sleep 1
     done
     ${PROJECT_PATH}/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
-    while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
-        echo "Waiting for initial sponsor to start up"
-        sleep 1
-    done
+    # while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
+    #     echo "Waiting for initial sponsor to start up"
+    #     sleep 1
+    # done
     echo "Initial sponsor is started"
-    while [[ $(get_members_up_count_by_unique_ports) < $MEMBER_COUNT ]]; do
-        echo "Initial sponsor's port is still bound more than once"
-        sleep 1
-    done
-    echo "Waiting for statistics writer to stop"
-    while [[ -n $(pgrep statistics-wr) ]]; do
-        sleep 1
-    done
-    echo "statistics-writer is stopped"
-    while [[ $(get_members_up_count_by_unique_ports) > 0 ]]; do
-        echo "Waiting for all members to stop"
-        sleep 1
-    done
-    echo "All members are stopped"
+    # while [[ $(get_members_up_count_by_unique_ports) < $MEMBER_COUNT ]]; do
+    #     echo "Initial sponsor's port is still bound more than once"
+    #     sleep 1
+    # done
+    # echo "Waiting for statistics writer to stop"
+    # while [[ -n $(pgrep statistics-wr) ]]; do
+    #     sleep 1
+    # done
+    # echo "statistics-writer is stopped"
+    # while [[ $(get_members_up_count_by_unique_ports) > 0 ]]; do
+    #     echo "Waiting for all members to stop"
+    #     sleep 1
+    # done
+    # echo "All members are stopped"
+    wait
+    echo "statistics-writer and all members are stopped"
 }
 
 function on_exit() {
