@@ -5,6 +5,8 @@
 #include <sstream>
 #include <sys/stat.h>
 
+#define FILE_LOCATION "statistic_results/without_retransmissions/"
+
 std::mutex statistics_writer::mutex_;
 statistics_writer* statistics_writer::instance_;
 int statistics_writer::member_count_;
@@ -68,12 +70,12 @@ void statistics_writer::write_statistics() {
     std::ofstream statistics_file;
     int filecount = 0;
     std::stringstream filename;
-    filename << "statistic_results/" << filename_description_ << "-#" << filecount << ".csv";
+    filename << FILE_LOCATION << filename_description_ << "-#" << filecount << ".csv";
     struct stat buffer;
     //Choose unused/non-existing filename
     for(filecount = 1; (stat(filename.str().c_str(), &buffer) == 0); filecount++) {
         filename.str("");
-        filename << "statistic_results/" << filename_description_ << "-#" << filecount << ".csv";
+        filename << FILE_LOCATION << filename_description_ << "-#" << filecount << ".csv";
     }
     statistics_file.open(filename.str());
     //Write header
