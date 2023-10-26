@@ -31,7 +31,7 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
         std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
       }
       // Join the multicast group.
-      multicast_socket_.set_option(boost::asio::ip::multicast::join_group(_multicast_address), ec);
+      multicast_socket_.set_option(boost::asio::ip::multicast::join_group(_multicast_address.to_v4(), _listen_interface_by_address.to_v4()), ec);
       if (ec) {
         std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
       }
