@@ -138,6 +138,9 @@ void distributed_dh::process_distributed_response(distributed_response_message _
     if (group_secret_rcvd() && _rcvd_distributed_response_message.offered_service_ == service_of_interest_) {
         std::unique_ptr<finish_ack_message> finish_ack = std::make_unique<finish_ack_message>();
         send_to(finish_ack.operator*(), _remote_endpoint); statistics_recorder_->record_count(count_metric::FINISH_ACK_MESSAGE_COUNT_);
+#ifndef RETRANSMISSIONS
+        contribute_statistics();
+#endif
     }
 }
 
@@ -233,6 +236,7 @@ void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_mess
     endpoints_acks_rcvd_from_.insert(_remote_endpoint);
     non_acked_responses_.erase(_remote_endpoint);
     if (is_sponsor_ && endpoints_acks_rcvd_from_.size() == member_count_-1) {
+#ifdef RETRANSMISSIONS
         is_sponsor_ = false;
         statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
         timeout_timer_.expires_from_now(std::chrono::seconds(TIMEOUT));
@@ -246,6 +250,9 @@ void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_mess
         send_multicast(finish.operator*()); // Message is not counted, since its only for triggering other members to contribute statistics and shut down
         std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
         process_finish(self_msg.operator*(), get_local_endpoint());
+#else
+    contribute_statistics();
+#endif
     }
 }
 
