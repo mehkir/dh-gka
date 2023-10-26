@@ -216,7 +216,7 @@ void distributed_dh::process_member_info_synch_response(member_info_synch_respon
 }
 
 void distributed_dh::process_finish(finish_message _rcvd_finish_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
-    if (!is_sponsor_) {
+    if (_remote_endpoint != get_local_endpoint()) {
         contribute_statistics();
     }
     if (_remote_endpoint == get_local_endpoint()) {
@@ -251,6 +251,7 @@ void distributed_dh::process_finish_ack(finish_ack_message _rcvd_finish_ack_mess
         std::unique_ptr<finish_message> self_msg = std::make_unique<finish_message>();
         process_finish(self_msg.operator*(), get_local_endpoint());
 #else
+    statistics_recorder_->record_timestamp(time_metric::DURATION_END_);
     contribute_statistics();
 #endif
     }
