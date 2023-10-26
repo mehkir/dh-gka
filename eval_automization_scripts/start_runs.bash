@@ -1,12 +1,13 @@
 #!/bin/bash
 PROJECT_PATH="/home/mehmet/vscode-workspaces"
 SERVICE_ID=42
-SCATTER_DELAY_MIN=10
-SCATTER_DELAY_MAX=100
-CRYPTO_ALGORITHM=('DEFAULT_DH' 'ECC_DH')
+SCATTER_DELAY_MIN=0
+SCATTER_DELAY_MAX=0
+# CRYPTO_ALGORITHM=('DEFAULT_DH' 'ECC_DH')
+CRYPTO_ALGORITHM=('ECC_DH')
 KEY_AGREEMENT_PROTOCOL=('PROTO_DST_DH' 'PROTO_STR_DH')
 
-RUNS=10
+RUNS=20
 
 for protocol in "${KEY_AGREEMENT_PROTOCOL[@]}"; do
     for algorithm in "${CRYPTO_ALGORITHM[@]}"; do
@@ -18,5 +19,3 @@ for protocol in "${KEY_AGREEMENT_PROTOCOL[@]}"; do
         done
     done
 done
-
-echo $(pwd)
