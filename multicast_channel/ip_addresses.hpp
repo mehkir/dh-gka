@@ -1,7 +1,7 @@
 #ifndef IP_ADDRESSES
 #define IP_ADDRESSES
 
-#define INTERFACE_ADDRESS "172.18.0.2"
+#define INTERFACE_ADDRESS "127.0.0.1"
 #define MULTICAST_ADDRESS "239.255.0.1"
 
 #endif
