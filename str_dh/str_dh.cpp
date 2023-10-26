@@ -9,6 +9,9 @@
 #define UNINITIALIZED_ADDRESS "0.0.0.0"
 
 str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), request_scheduled_(false), response_scheduled_(false), higher_member_id_synching_(false), higher_member_id_assigned_(false), synch_token_rcvd_(false), synch_finished_(false), last_member_synch_token_sending_triggered_(false), finish_message_rcvd_(false), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), timeout_timer_(multicast_application_impl::get_io_service()) {
+    if (is_sponsor_) {
+        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
+    }
 #ifdef RETRANSMISSIONS
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
 #endif
@@ -31,7 +34,6 @@ str_dh::str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member
 
     statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
     if (is_sponsor_) {
-        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
         member_id_ = INITIAL_SPONSOR_ID;
         keys_computed_count_ = 1;
         str_key_tree_map_[service_of_interest_] = build_str_tree(secret_, blinded_secret_, secret_, blinded_secret_);

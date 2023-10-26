@@ -9,6 +9,9 @@
 #include <cryptopp/asn.h>
 
 distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max) : is_sponsor_(_is_sponsor), service_of_interest_(_service_id), member_count_(_member_count), message_handler_(std::make_unique<message_handler>(this)), statistics_recorder_(statistics_recorder::get_instance()), scatter_timer_(multicast_application_impl::get_io_service()), timeout_timer_(multicast_application_impl::get_io_service()) {
+    if (is_sponsor_) {
+        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
+    }
 #ifdef RETRANSMISSIONS
     scatter_delay_ = compute_scatter_delay(_scatter_delay_min, _scatter_delay_max);
 #endif
@@ -30,7 +33,6 @@ distributed_dh::distributed_dh(bool _is_sponsor, service_id_t _service_id,  std:
     statistics_recorder_->record_count(count_metric::MEMBER_COUNT_);
 
     if (is_sponsor_) {
-        statistics_recorder_->record_timestamp(time_metric::DURATION_START_);
         group_secret_.New(diffie_hellman_.AgreedValueLength());
         diffie_hellman_.GeneratePrivateKey(rnd_, group_secret_); statistics_recorder_->record_count(count_metric::CRYPTO_OPERATIONS_COUNT_);
 
