@@ -5,7 +5,7 @@
 #include <sstream>
 #include <sys/stat.h>
 
-#define FILE_LOCATION "statistic_results/without_retransmissions/"
+#define FILE_LOCATION "/home/mehmet/vscode-workspaces/c++-multicast/statistic_results/without_retransmissions/"
 
 std::mutex statistics_writer::mutex_;
 statistics_writer* statistics_writer::instance_;
