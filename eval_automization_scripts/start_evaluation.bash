@@ -96,7 +96,7 @@ if [[ $1 -lt 1 ]]; then
     exit 1
 fi
 
-if [[ $2 -lt 1 ]]; then
+if [[ $2 -lt 2 ]]; then
     echo "member count must be greater than 1"
     exit 1
 fi
