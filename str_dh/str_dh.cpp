@@ -106,6 +106,9 @@ void str_dh::process_request(request_message _rcvd_request_message, boost::asio:
         statistics_recorder_->record_timestamp(time_metric::KEY_AGREEMENT_START_);
     }
     process_pending_request();
+#ifndef RETRANSMISSIONS
+        contribute_statistics();
+#endif
 }
 
 void str_dh::process_response(response_message _rcvd_response_message, boost::asio::ip::udp::endpoint _remote_endpoint) {
@@ -346,9 +349,6 @@ void str_dh::process_pending_request() {
         keys_computed_count_++;
 
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
-#ifndef RETRANSMISSIONS
-        contribute_statistics();
-#endif
 #ifdef RETRANSMISSIONS
         send_cyclic_response();
 #endif
