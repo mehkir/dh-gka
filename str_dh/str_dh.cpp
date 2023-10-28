@@ -346,6 +346,9 @@ void str_dh::process_pending_request() {
         keys_computed_count_++;
 
         send(response.operator*()); statistics_recorder_->record_count(count_metric::RESPONSE_MESSAGE_COUNT_);
+#ifndef RETRANSMISSIONS
+        contribute_statistics();
+#endif
 #ifdef RETRANSMISSIONS
         send_cyclic_response();
 #endif
