@@ -35,6 +35,10 @@ multicast_channel::multicast_channel(boost::asio::io_service& _io_service,
       if (ec) {
         std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
       }
+      multicast_socket_.set_option(boost::asio::ip::multicast::enable_loopback(false), ec);
+      if (ec) {
+        std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
+      }
       multicast_socket_.set_option(boost::asio::ip::udp::socket::receive_buffer_size(max_length), ec);
       if (ec) {
         std::cerr << "[<multicast_channel>]: " << ec.what() << std::endl;
