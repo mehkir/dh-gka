@@ -6,7 +6,7 @@ compile() {
     local KEY_AGREEMENT_PROTOCOL=$2
     sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" ${PROJECT_PATH}/c++-multicast/CMakeLists.txt
     echo "Compiling all targets..."
-    /usr/sbin/cmake --build ${PROJECT_PATH}/c++-multicast/build --config Release --target all -j 14 --
+    $(which cmake) --build ${PROJECT_PATH}/c++-multicast/build --config Release --target all -j 14 --
     echo "All targets are compiled."
 }
 
