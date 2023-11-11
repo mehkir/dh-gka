@@ -4,17 +4,36 @@
 
 int main (int argc, char* argv[]) {
     if(argc != 3) {
-      std::cerr << "Usage: statistics-writer <member_count> <filename_description>\n";
-      std::cerr << "  Example: statistics-writer 20 ECC_DH-PROTO_STR_DH-20\n";
+      std::cerr << "Usage: " + std::string(argv[0]) + " <member_count> <absolute_project_path>\n";
+      std::cerr << "  Example: " + std::string(argv[0]) + " 20 /path/to/project/directory\n";
       return 1;
     }
-    int member_count = std::stoi(argv[1]);
-    std::string filename_description(argv[2]);
-    if (member_count <= 0) {
-      std::cerr << "member_count must be greater than 0\n";
+    std::uint32_t member_count = std::stoi(argv[1]);
+    std::string absolute_project_path(argv[2]);
+    std::string result_filename;
+
+#ifdef PROTO_STR_DH
+    result_filename = "PROTO_STR_DH";
+#elif define(PROTO_DST_DH)
+    result_filename = "PROTO_DST_DH";
+#else
+    std::cerr << "No key agreement algortihm defined, add PROTO_STR_DH or PROTO_DST_DH to compile definitions"
+    return 1;
+#endif
+#ifdef ECC_DH
+    result_filename += "-ECC_DH";
+#elif define(DEFAULT_DH)
+    result_filename += "-DEFAULT_DH";
+#else
+    std::cerr << "No crypto algorithm defined, add ECC_DH or DEFAULT_DH to compile definitions"
+    return 1;
+#endif
+    if (member_count <= 1) {
+      std::cerr << "member_count must be greater than 1\n";
       return 1;
     }
-    std::unique_ptr<statistics_writer> sw(statistics_writer::get_instance(member_count, filename_description));
+    result_filename += "-" + std::to_string(member_count);
+    std::unique_ptr<statistics_writer> sw(statistics_writer::get_instance(member_count, absolute_project_path, result_filename));
     sw->write_statistics();
     return 0;
 }
