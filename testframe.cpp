@@ -35,5 +35,10 @@ int main () {
         std::cout << c << std::endl;
     }
 
+    int member_count = 20;
+    std::string name = "Mehmet";
+    std::string result = name + "-" + std::to_string(member_count);
+    result += "-end";
+    std::cout << result << std::endl;
     return 0;
 }
