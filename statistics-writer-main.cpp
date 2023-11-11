@@ -28,6 +28,9 @@ int main (int argc, char* argv[]) {
     std::cerr << "No crypto algorithm defined, add ECC_DH or DEFAULT_DH to compile definitions"
     return 1;
 #endif
+#ifdef RETRANSMISSIONS
+    result_filename += "-RTX";
+#endif
     if (member_count <= 1) {
       std::cerr << "member_count must be greater than 1\n";
       return 1;
