@@ -3,12 +3,11 @@ project(multicast)
 
 set(CMAKE_CXX_STANDARD 26)
 
-add_compile_definitions(ECC_DH PROTO_STR_DH LOGD)
+add_compile_definitions(ECC_DH PROTO_STR_DH)
 
 add_subdirectory(multicast_channel)
 add_subdirectory(message_handler)
 add_subdirectory(str_dh)
-add_subdirectory(tg_dh)
 add_subdirectory(distributed_dh)
 add_subdirectory(statistics)
 

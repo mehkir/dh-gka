@@ -1,11 +1,10 @@
 #include "multicast_application_impl.hpp"
-#include "ip_addresses.hpp"
 #include "logger.hpp"
 
-multicast_application_impl::multicast_application_impl() : multicast_channel_(std::make_unique<multicast_channel>(io_service_,
-                                            boost::asio::ip::address::from_string(INTERFACE_ADDRESS),
-                                            boost::asio::ip::address::from_string(MULTICAST_ADDRESS),
-                                            65000,
+multicast_application_impl::multicast_application_impl(std::string _listening_interface_by_ip, std::string _multicast_ip, std::uint16_t _port) : multicast_channel_(std::make_unique<multicast_channel>(io_service_,
+                                            boost::asio::ip::address::from_string(_listening_interface_by_ip),
+                                            boost::asio::ip::address::from_string(_multicast_ip),
+                                            _port,
                                             *this)){
 }
 

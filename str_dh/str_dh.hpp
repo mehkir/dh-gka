@@ -56,7 +56,7 @@ class str_dh : public key_agreement_protocol, public multicast_application_impl 
         std::unique_ptr<response_message> response_message_cache_;
     // Methods
     public:
-        str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max);
+        str_dh(bool _is_sponsor, service_id_t _service_id, std::uint32_t _member_count, std::uint32_t _scatter_delay_min, std::uint32_t _scatter_delay_max, std::string _listening_interface_by_ip, std::string _multicast_ip, std::uint16_t _port);
         ~str_dh();
         void start();
         virtual void received_data(unsigned char* _data, size_t _bytes_recvd, boost::asio::ip::udp::endpoint _remote_endpoint) override;
