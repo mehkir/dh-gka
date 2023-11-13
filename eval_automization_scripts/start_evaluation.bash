@@ -31,6 +31,9 @@ start() {
     local KEY_AGREEMENT_PROTOCOL=$6
     local ABSOLUTE_PROJECT_PATH=$7
     local ABSOLUTE_RESULTS_DIRECTORY_PATH=$8
+    local LISTENING_INTERFACE_BY_IP=$9
+    local MULTICAST_IP=$10
+    local MULTICAST_PORT=$11
 
     echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
 
@@ -43,7 +46,7 @@ start() {
 
     for (( i=0; i<$(get_subscriber_count $MEMBER_COUNT); i++ ))
     do
-        ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+        ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $LISTENING_INTERFACE_BY_IP $MULTICAST_IP $MULTICAST_PORT &
     done
     while [[ $(get_process_count) -ne $(get_subscriber_count $MEMBER_COUNT) ]]; do
         echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $MEMBER_COUNT) are up"
@@ -54,7 +57,7 @@ start() {
         echo "There are still ports bound more than once"
         sleep 1
     done
-    ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+    ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $LISTENING_INTERFACE_BY_IP $MULTICAST_IP $MULTICAST_PORT &
     # while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
     #     echo "Waiting for initial sponsor to start up"
     #     sleep 1
@@ -86,10 +89,10 @@ function on_exit() {
     exit 1
 }
 
-if [ $# -ne 8 ]; then
+if [ $# -ne 11 ]; then
     echo "Not enough parameters" 1>&2
-    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <crypto_algorithm> <key_agreement_protocol> <absolute_project_path> <absolute_results_directory_path>"
-    echo "Example: $0 42 20 10 100 DEFAULT_DH|ECC_DH PROTO_STR_DH|PROTO_DST_DH /path/to/project/directory /path/to/results/directory"
+    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <crypto_algorithm> <key_agreement_protocol> <absolute_project_path> <absolute_results_directory_path> <listening_interface_by_ip> <multicast_ip> <multicast_port>"
+    echo "Example: $0 42 20 10 100 DEFAULT_DH|ECC_DH PROTO_STR_DH|PROTO_DST_DH /path/to/project/directory /path/to/results/directory 127.0.0.1 239.255.0.1 65000"
     exit 1
 fi
 
@@ -122,4 +125,4 @@ fi
 trap 'on_exit' SIGINT
 
 compile $5 $6 $CORRECTED_ABSOLUTE_PROJECT_PATH
-start $1 $2 $3 $4 $5 $6 $CORRECTED_ABSOLUTE_PROJECT_PATH $8
+start $1 $2 $3 $4 $5 $6 $CORRECTED_ABSOLUTE_PROJECT_PATH $8 $9 $10 $11
