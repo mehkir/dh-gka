@@ -36,6 +36,11 @@ int main (int argc, char* argv[]) {
       return 1;
     }
     result_filename += "-" + std::to_string(member_count);
+
+    std::string slash_char("/");
+    if (absolute_results_directory_path.compare(absolute_results_directory_path.length()-1,1,slash_char)) {
+        absolute_results_directory_path += "/";
+    }
     std::unique_ptr<statistics_writer> sw(statistics_writer::get_instance(member_count, absolute_results_directory_path, result_filename));
     sw->write_statistics();
     return 0;
