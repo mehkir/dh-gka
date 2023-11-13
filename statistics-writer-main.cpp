@@ -14,7 +14,7 @@ int main (int argc, char* argv[]) {
 
 #ifdef PROTO_STR_DH
     result_filename = "PROTO_STR_DH";
-#elif define(PROTO_DST_DH)
+#elif defined(PROTO_DST_DH)
     result_filename = "PROTO_DST_DH";
 #else
     std::cerr << "No key agreement algortihm defined, add PROTO_STR_DH or PROTO_DST_DH to compile definitions"
@@ -22,7 +22,7 @@ int main (int argc, char* argv[]) {
 #endif
 #ifdef ECC_DH
     result_filename += "-ECC_DH";
-#elif define(DEFAULT_DH)
+#elif defined(DEFAULT_DH)
     result_filename += "-DEFAULT_DH";
 #else
     std::cerr << "No crypto algorithm defined, add ECC_DH or DEFAULT_DH to compile definitions"
