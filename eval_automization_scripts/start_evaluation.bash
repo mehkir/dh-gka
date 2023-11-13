@@ -1,12 +1,12 @@
 #!/bin/bash
-PROJECT_PATH="/home/mehmet/vscode-workspaces"
 
 compile() {
     local CRYPTO_ALGORITHM=$1
     local KEY_AGREEMENT_PROTOCOL=$2
-    sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" ${PROJECT_PATH}/c++-multicast/CMakeLists.txt
+    local ABSOLUTE_PROJECT_PATH=$3
+    sed -i -E "s/add_compile_definitions\(.*\)/add_compile_definitions($CRYPTO_ALGORITHM $KEY_AGREEMENT_PROTOCOL)/" ${ABSOLUTE_PROJECT_PATH}/CMakeLists.txt
     echo "Compiling all targets..."
-    $(which cmake) --build ${PROJECT_PATH}/c++-multicast/build --config Release --target all -j 14 --
+    $(which cmake) --build ${ABSOLUTE_PROJECT_PATH}/build --config Release --target all -j $(nproc) --
     echo "All targets are compiled."
 }
 
@@ -29,10 +29,12 @@ start() {
     local SCATTER_DELAY_MAX=$4
     local CRYPTO_ALGORITHM=$5
     local KEY_AGREEMENT_PROTOCOL=$6
+    local ABSOLUTE_PROJECT_PATH=$7
+    local ABSOLUTE_RESULTS_DIRECTORY_PATH=$8
 
     echo "Starting $KEY_AGREEMENT_PROTOCOL $CRYPTO_ALGORITHM with $MEMBER_COUNT members"
 
-    ${PROJECT_PATH}/c++-multicast/build/statistics-writer-main $MEMBER_COUNT "${KEY_AGREEMENT_PROTOCOL}-${CRYPTO_ALGORITHM}-${MEMBER_COUNT}" &
+    ${ABSOLUTE_PROJECT_PATH}/build/statistics-writer-main $MEMBER_COUNT $ABSOLUTE_RESULTS_DIRECTORY_PATH &
     while [[ -z $(pgrep statistics-wr) ]]; do
         echo "Waiting for statistics writer to start up"
         sleep 1
@@ -41,7 +43,7 @@ start() {
 
     for (( i=0; i<$(get_subscriber_count $MEMBER_COUNT); i++ ))
     do
-        ${PROJECT_PATH}/c++-multicast/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+        ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example false $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     done
     while [[ $(get_process_count) -ne $(get_subscriber_count $MEMBER_COUNT) ]]; do
         echo "Waiting for all subscribers to start up, $(get_process_count)/$(get_subscriber_count $MEMBER_COUNT) are up"
@@ -52,7 +54,7 @@ start() {
         echo "There are still ports bound more than once"
         sleep 1
     done
-    ${PROJECT_PATH}/c++-multicast/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
+    ${ABSOLUTE_PROJECT_PATH}/build/multicast-dh-example true $SERVICE_ID $MEMBER_COUNT $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX &
     # while [[ $(get_process_count) -ne $MEMBER_COUNT ]]; do
     #     echo "Waiting for initial sponsor to start up"
     #     sleep 1
@@ -84,10 +86,10 @@ function on_exit() {
     exit 1
 }
 
-if [ $# -ne 6 ]; then
+if [ $# -ne 8 ]; then
     echo "Not enough parameters" 1>&2
-    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <crypto_algorithm> <key_agreement_protocol>"
-    echo "Example: $0 42 20 10 100 DEFAULT_DH|ECC_DH PROTO_STR_DH|PROTO_DST_DH"
+    echo "Usage: $0 <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <crypto_algorithm> <key_agreement_protocol> <absolute_project_path> <absolute_results_directory_path>"
+    echo "Example: $0 42 20 10 100 DEFAULT_DH|ECC_DH PROTO_STR_DH|PROTO_DST_DH /path/to/project/directory /path/to/results/directory"
     exit 1
 fi
 
@@ -111,7 +113,13 @@ if [[ $6 != "PROTO_STR_DH" && $6 != "PROTO_DST_DH" ]]; then
     exit 1
 fi
 
+last_char_idx="$((${#7} - 1))"
+last_char="${7:last_char_idx}"
+CORRECTED_ABSOLUTE_PROJECT_PATH=$7
+if [[ $last_char == "/" ]]; then
+    CORRECTED_ABSOLUTE_PROJECT_PATH=${7:0:$last_char_idx}
+fi
 trap 'on_exit' SIGINT
 
-compile $5 $6
-start $1 $2 $3 $4 $5 $6
+compile $5 $6 $CORRECTED_ABSOLUTE_PROJECT_PATH
+start $1 $2 $3 $4 $5 $6 $CORRECTED_ABSOLUTE_PROJECT_PATH $8
