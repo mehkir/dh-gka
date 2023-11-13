@@ -3,7 +3,7 @@
 
 class multicast_app : public multicast_application_impl {
 public:
-    multicast_app() {
+    multicast_app() : multicast_application_impl(boost::asio::ip::address::from_string("127.0.0.1"), boost::asio::ip::address::from_string("239.255.0.1"), 65000) {
       LOG_STD("[<multicast_app>]: endpoint(" << get_local_endpoint().address() << "," << get_local_endpoint().port() << ")")
     }
 

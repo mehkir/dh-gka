@@ -47,5 +47,11 @@ int main () {
         result += "/";
     }
     std::cout << result << std::endl;
+
+    boost::system::error_code ec;
+    boost::asio::ip::udp::endpoint test(boost::asio::ip::address::from_string("1.2.3.5", ec), 56);
+    if (ec) {
+        std::cerr << ec.what() << std::endl;
+    }
     return 0;
 }

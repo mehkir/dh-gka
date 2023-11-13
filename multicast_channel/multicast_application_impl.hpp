@@ -6,7 +6,7 @@
 
 class multicast_application_impl : public multicast_application {
     public:
-      multicast_application_impl(std::string _listening_interface_by_ip, std::string _multicast_ip, std::uint16_t _port);
+      multicast_application_impl(boost::asio::ip::address _listening_interface_by_ip, boost::asio::ip::address _multicast_ip, std::uint16_t _multicast_port);
       ~multicast_application_impl();
     protected:
       void send_multicast(boost::asio::streambuf& _buffer);

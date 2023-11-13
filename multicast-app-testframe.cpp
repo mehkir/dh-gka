@@ -6,7 +6,7 @@
 
 class multicast_app_testframe : public key_agreement_protocol, public multicast_application_impl {
     public:
-        multicast_app_testframe(bool _is_sponsor) : is_sponsor_(_is_sponsor), message_handler_(std::make_unique<message_handler>(this)), request_counter_(0) {
+        multicast_app_testframe(bool _is_sponsor) : is_sponsor_(_is_sponsor), multicast_application_impl(boost::asio::ip::address::from_string("127.0.0.1"), boost::asio::ip::address::from_string("239.255.0.1"), 65000), message_handler_(std::make_unique<message_handler>(this)), request_counter_(0) {
             if (is_sponsor_) {
                 std::unique_ptr<offer_message> offer = std::make_unique<offer_message>();
                 offer->offered_service_ = 0;
