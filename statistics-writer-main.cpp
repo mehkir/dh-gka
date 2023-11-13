@@ -4,12 +4,12 @@
 
 int main (int argc, char* argv[]) {
     if(argc != 3) {
-      std::cerr << "Usage: " + std::string(argv[0]) + " <member_count> <absolute_project_path>\n";
-      std::cerr << "  Example: " + std::string(argv[0]) + " 20 /path/to/project/directory\n";
+      std::cerr << "Usage: " + std::string(argv[0]) + " <member_count> <absolute_results_directory_path>\n";
+      std::cerr << "  Example: " + std::string(argv[0]) + " 20 /path/to/results/directory\n";
       return 1;
     }
     std::uint32_t member_count = std::stoi(argv[1]);
-    std::string absolute_project_path(argv[2]);
+    std::string absolute_results_directory_path(argv[2]);
     std::string result_filename;
 
 #ifdef PROTO_STR_DH
@@ -36,7 +36,7 @@ int main (int argc, char* argv[]) {
       return 1;
     }
     result_filename += "-" + std::to_string(member_count);
-    std::unique_ptr<statistics_writer> sw(statistics_writer::get_instance(member_count, absolute_project_path, result_filename));
+    std::unique_ptr<statistics_writer> sw(statistics_writer::get_instance(member_count, absolute_results_directory_path, result_filename));
     sw->write_statistics();
     return 0;
 }
