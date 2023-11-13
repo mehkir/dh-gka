@@ -5,19 +5,19 @@
 #include <sstream>
 #include <sys/stat.h>
 
-#define FILE_LOCATION "/home/mehmet/vscode-workspaces/c++-multicast/statistic_results/without_retransmissions/"
-
 std::mutex statistics_writer::mutex_;
 statistics_writer* statistics_writer::instance_;
 int statistics_writer::member_count_;
-std::string statistics_writer::filename_description_;
+std::string statistics_writer::absolute_results_directory_path_;
+std::string statistics_writer::result_filename_;
 
-statistics_writer* statistics_writer::get_instance(int _member_count, std::string _filename_description) {
+statistics_writer* statistics_writer::get_instance(int _member_count, std::string _absolute_results_directory_path, std::string _result_filename) {
     std::lock_guard<std::mutex> lock_guard(mutex_);
     if(instance_ == nullptr) {
         instance_ = new statistics_writer();
         member_count_ = _member_count;
-        filename_description_ = _filename_description;
+        absolute_results_directory_path_ = _absolute_results_directory_path;
+        result_filename_ = _result_filename;
     }
     return instance_;
 }
@@ -69,15 +69,15 @@ void statistics_writer::write_statistics() {
     LOG_STD("[<statistics_writer>] " << current_member_count << "/" << member_count_ << " have added statistics")
     std::ofstream statistics_file;
     int filecount = 0;
-    std::stringstream filename;
-    filename << FILE_LOCATION << filename_description_ << "-#" << filecount << ".csv";
+    std::stringstream absolute_result_file_path;
+    absolute_result_file_path << absolute_results_directory_path_ << result_filename_ << "-#" << filecount << ".csv";
     struct stat buffer;
-    //Choose unused/non-existing filename
-    for(filecount = 1; (stat(filename.str().c_str(), &buffer) == 0); filecount++) {
-        filename.str("");
-        filename << FILE_LOCATION << filename_description_ << "-#" << filecount << ".csv";
+    //Choose unused/non-existing absolute_result_file_path
+    for(filecount = 1; (stat(absolute_result_file_path.str().c_str(), &buffer) == 0); filecount++) {
+        absolute_result_file_path.str("");
+        absolute_result_file_path << absolute_results_directory_path_ << result_filename_ << "-#" << filecount << ".csv";
     }
-    statistics_file.open(filename.str());
+    statistics_file.open(absolute_result_file_path.str());
     //Write header
     for(metric_id m_id = 0; m_id < count_metric::COUNT_SIZE; m_id++) {
         statistics_file << count_metric_names_[m_id];
