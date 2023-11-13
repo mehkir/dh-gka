@@ -40,5 +40,12 @@ int main () {
     std::string result = name + "-" + std::to_string(member_count);
     result += "-end";
     std::cout << result << std::endl;
+    std::cout << result[result.length()-1] << std::endl;
+    std::string slash_char("/");
+    if (result.compare(result.length()-1,1,slash_char)) {
+        std::cout << "Slash at the end is missing" << std::endl;
+        result += "/";
+    }
+    std::cout << result << std::endl;
     return 0;
 }
