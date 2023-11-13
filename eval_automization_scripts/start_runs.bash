@@ -17,9 +17,9 @@ for protocol in "${KEY_AGREEMENT_PROTOCOL[@]}"; do
     for algorithm in "${CRYPTO_ALGORITHM[@]}"; do
         for i in $(seq 1 $RUNS); do
             echo "Running ${protocol}-${algorithm} ${i}/${RUNS}"
-            # for member_count in {100..1000..100}; do
-            for member_count in {2..26}; do
-                ${ABSOLUTE_PROJECT_PATH}/eval_automization_scripts/start_evaluation.bash $SERVICE_ID $member_count $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $algorithm $protocol $ABSOLUTE_PROJECT_PATH $ABSOLUTE_RESULTS_DIRECTORY_PATH 1>/dev/null
+            for member_count in {100..1000..100}; do
+            # for member_count in {2..26}; do
+                ${ABSOLUTE_PROJECT_PATH}/eval_automization_scripts/start_evaluation.bash $SERVICE_ID $member_count $SCATTER_DELAY_MIN $SCATTER_DELAY_MAX $algorithm $protocol $ABSOLUTE_PROJECT_PATH $ABSOLUTE_RESULTS_DIRECTORY_PATH $LISTENING_INTERFACE_BY_IP $MULTICAST_IP $MULTICAST_PORT 1>/dev/null
             done
         done
     done
