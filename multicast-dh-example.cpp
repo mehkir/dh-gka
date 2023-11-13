@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     if (argc != 9)
     {
       std::cerr << "Usage: multicast-dh-example <is_sponsor> <service_id> <member_count> <scatter_delay_min(ms)> <scatter_delay_max(ms)> <listening_interface_by_ip> <multicast_ip> <multicast_port>\n";
-      std::cerr << "  Example: multicast-dh-example true 42 20 10 100 \n";
+      std::cerr << "  Example: multicast-dh-example true 42 20 10 100 127.0.0.1 239.255.0.1 65000\n";
       return 1;
     }
 
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (member_count < 2) {
-      std::cerr << "service id must be greater than 1\n";
+      std::cerr << "member count must be greater than 1\n";
       return 1;
     }
 
