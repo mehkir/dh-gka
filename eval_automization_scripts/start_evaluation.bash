@@ -19,7 +19,7 @@ get_subscriber_count() {
 }
 
 get_members_up_count_by_unique_ports() {
-    echo $(ss -lup | grep multicast-dh-ex | awk '{print $4}' |  awk -F: '{print $NF}' | grep -v 65000 | sort -u | wc -l)
+    echo $(ss -lup | grep multicast-dh-ex | awk '{print $4}' |  awk -F: '{print $NF}' | grep -v $1 | sort -u | wc -l)
 }
 
 start() {
@@ -53,7 +53,7 @@ start() {
         sleep 1
     done
     echo "All subscribers started up"
-    while [[ $(get_members_up_count_by_unique_ports) < $(get_subscriber_count $MEMBER_COUNT) ]]; do
+    while [[ $(get_members_up_count_by_unique_ports $MULTICAST_PORT) < $(get_subscriber_count $MEMBER_COUNT) ]]; do
         echo "There are still ports bound more than once"
         sleep 1
     done
@@ -63,7 +63,7 @@ start() {
     #     sleep 1
     # done
     echo "Initial sponsor is started"
-    # while [[ $(get_members_up_count_by_unique_ports) < $MEMBER_COUNT ]]; do
+    # while [[ $(get_members_up_count_by_unique_ports $MULTICAST_PORT) < $MEMBER_COUNT ]]; do
     #     echo "Initial sponsor's port is still bound more than once"
     #     sleep 1
     # done
@@ -72,7 +72,7 @@ start() {
     #     sleep 1
     # done
     # echo "statistics-writer is stopped"
-    # while [[ $(get_members_up_count_by_unique_ports) > 0 ]]; do
+    # while [[ $(get_members_up_count_by_unique_ports $MULTICAST_PORT) > 0 ]]; do
     #     echo "Waiting for all members to stop"
     #     sleep 1
     # done
